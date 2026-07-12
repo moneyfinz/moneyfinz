@@ -486,6 +486,16 @@ html,body{height:100%;overflow:hidden;background:#fff;
       }, { merge: true });
     };
 
+    // Pushes the local transactions/budgets/currency up to the signed-in
+    // user's Firestore document, so the same data shows up on every device
+    // that logs into this account (previously these lived in localStorage
+    // only, which never leaves the device it was entered on).
+    window.fbSaveFinanceData = async (payload) => {
+      const user = auth.currentUser;
+      if (!user) return;
+      await setDoc(doc(db, 'users', user.uid), payload, { merge: true });
+    };
+
     onAuthStateChanged(auth, (user) => {
       if (unsubUserDoc) { unsubUserDoc(); unsubUserDoc = null; }
 
@@ -1120,9 +1130,22 @@ const INC_CATS = [
 ];
 
 // ── HELPERS ───────────────────────────────────────────
+// Cloud sync is debounced so rapid edits (e.g. deleting several
+// transactions in a row) don't fire a Firestore write per click.
+let financeSyncTimer = null;
+function syncFinanceToCloud(){
+  if(financeSyncTimer) clearTimeout(financeSyncTimer);
+  financeSyncTimer = setTimeout(()=>{
+    if(window.fbSaveFinanceData){
+      window.fbSaveFinanceData({ txns:S.txns, budgets:S.budgets, currency:S.currency })
+        .catch(e=>console.log('Cloud sync failed (will retry on next change):', e));
+    }
+  }, 600);
+}
 function save(){
   localStorage.setItem('pt_txns', JSON.stringify(S.txns));
   localStorage.setItem('pt_bud',  JSON.stringify(S.budgets));
+  syncFinanceToCloud();
 }
 function getMonth(){
   const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+S.offset);
@@ -1476,6 +1499,7 @@ function renderCurrencyList(){
 function selectCurrency(code){
   S.currency=code;
   localStorage.setItem('pt_currency', code);
+  syncFinanceToCloud();
   closeCurrencyModal();
   updateCurrencyPill();
   renderHome();
@@ -1938,6 +1962,33 @@ function migrateLegacyCurrency(){
   if(changed) save();
 }
 
+// Reconciles local (localStorage) finance data with the account's Firestore
+// document. Two cases:
+//  1. The Firestore doc already has txns/budgets/currency saved (this
+//     account has synced before, from this device or another one) — that
+//     cloud copy is the source of truth, so load it into S and re-render.
+//  2. The Firestore doc has no finance fields yet (existing account,
+//     first login after this update) — push whatever is currently in
+//     local storage up to the cloud, so it becomes the seed that every
+//     other device will pick up.
+function applyCloudFinanceData(data){
+  const hasCloudData = Array.isArray(data.txns) || Array.isArray(data.budgets) || !!data.currency;
+  if(hasCloudData){
+    S.txns = Array.isArray(data.txns) ? data.txns : [];
+    S.budgets = Array.isArray(data.budgets) ? data.budgets : [];
+    if(data.currency) S.currency = data.currency;
+    localStorage.setItem('pt_txns', JSON.stringify(S.txns));
+    localStorage.setItem('pt_bud', JSON.stringify(S.budgets));
+    localStorage.setItem('pt_currency', S.currency);
+    if(appInitialized){
+      updateCurrencyPill(); renderHome(); refreshInsights();
+    }
+  } else if(window.fbSaveFinanceData){
+    window.fbSaveFinanceData({ txns:S.txns, budgets:S.budgets, currency:S.currency })
+      .catch(e=>console.log('Initial cloud seed failed (will retry on next change):', e));
+  }
+}
+
 window.onUserDataChange = function(data){
   bootResolved = true;
   document.getElementById('screen-boot').style.display='none';
@@ -1945,6 +1996,7 @@ window.onUserDataChange = function(data){
   if(window.currentUser){
     document.getElementById('account-email').textContent = window.currentUser.email || '-';
   }
+  applyCloudFinanceData(data);
   const now = new Date();
   const active = !!(data.subscribed && data.expiryDate && new Date(data.expiryDate) > now);
 
@@ -1973,6 +2025,16 @@ window.onAuthLoggedOut = function(){
   appInitialized = false;
   authMode = 'login';
   document.getElementById('auth-form').reset();
+  // Clear this device's local finance cache so that, if a different
+  // account logs in next on this same browser, applyCloudFinanceData()
+  // doesn't mistake the previous account's leftover data for "current
+  // local data" and push it into the new account.
+  S.txns = []; S.budgets = []; S.currency = 'USD'; S.rates = null; S.ratesDate = '';
+  localStorage.removeItem('pt_txns');
+  localStorage.removeItem('pt_bud');
+  localStorage.removeItem('pt_currency');
+  localStorage.removeItem('pt_rates');
+  localStorage.removeItem('pt_rates_date');
   enterAuthScreen();
 };
 
