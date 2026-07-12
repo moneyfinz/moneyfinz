@@ -1310,7 +1310,7 @@ function refreshInsights(){
   if(!txs.length){
     ovb.innerHTML=emptyState('No transaction found','Add your first transaction below','openExpenseForm()','+ Add Transaction');
   } else {
-    const rows=sortedTxs.map(t=>txRow(t)).join('');
+    const rows=sortedTxs.map(t=>txRow(t, false)).join('');
     ovb.innerHTML=`<div class="card" style="margin-top:12px">
       <div class="card-title">All Transactions</div>
       ${rows}
@@ -1438,7 +1438,7 @@ function renderHistory(){
   });
   sc.innerHTML=Object.entries(groups).map(([date,txs])=>`
     <div class="history-date-header">${date}</div>
-    ${txs.map(t=>txRow(t)).join('')}
+    ${txs.map(t=>txRow(t, false)).join('')}
   `).join('');
 }
 
