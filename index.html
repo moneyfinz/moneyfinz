@@ -835,6 +835,21 @@ html,body{height:100%;overflow:hidden;background:#fff;
   </div>
 </div>
 
+<!-- ══════════ BUDGET MENU MODAL ══════════ -->
+<div class="modal-overlay" id="budget-menu-modal" onclick="closeBudgetMenuBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Budget</h2>
+      <button class="modal-close" onclick="closeBudgetMenu()">✕</button>
+    </div>
+    <div style="padding:14px 16px 28px;display:flex;flex-direction:column;gap:10px">
+      <button class="btn-outline" onclick="editBudget()">✏️&nbsp;&nbsp;Edit</button>
+      <button class="btn-outline" style="background:var(--red-light);color:var(--red)" onclick="deleteBudget()">🗑️&nbsp;&nbsp;Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ CURRENCY MODAL ══════════ -->
 <div class="modal-overlay" id="currency-modal" onclick="closeCurrencyModalBg(event)">
   <div class="modal-sheet">
@@ -1025,7 +1040,9 @@ const S = {
   insTab: 'overview',
   catFor: '',
   editingId: null,
+  editingBudgetId: null,
   activeTxnId: null,
+  activeBudgetId: null,
 };
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1310,9 +1327,12 @@ function refreshInsights(){
               <div class="budget-cat-icon">${b.icon||'📋'}</div>
               <div class="budget-cat-name">${b.category}</div>
             </div>
-            <div class="budget-meta">
-              <div class="budget-spent" style="color:${over?'var(--red)':'var(--text)'}">${fmt(spent)}</div>
-              <div class="budget-total">of ${fmt(budTotal)}</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="budget-meta">
+                <div class="budget-spent" style="color:${over?'var(--red)':'var(--text)'}">${fmt(spent)}</div>
+                <div class="budget-total">of ${fmt(budTotal)}</div>
+              </div>
+              <div class="li-menu" onclick="openBudgetMenu(event, ${b.id})"><i></i><i></i><i></i></div>
             </div>
           </div>
           <div class="budget-bar-track">
@@ -1476,6 +1496,43 @@ function closeTxnMenu(){
 }
 function closeTxnMenuBg(e){ if(e.target===document.getElementById('txn-menu-modal')) closeTxnMenu(); }
 
+// ── BUDGET ACTION MENU (3-dot menu) ────────────────────
+function openBudgetMenu(e, id){
+  e.stopPropagation();
+  S.activeBudgetId=id;
+  document.getElementById('budget-menu-modal').classList.add('open');
+}
+function closeBudgetMenu(){
+  document.getElementById('budget-menu-modal').classList.remove('open');
+  S.activeBudgetId=null;
+}
+function closeBudgetMenuBg(e){ if(e.target===document.getElementById('budget-menu-modal')) closeBudgetMenu(); }
+
+function deleteBudget(){
+  const id=S.activeBudgetId;
+  if(id==null) return;
+  S.budgets=S.budgets.filter(b=>b.id!==id);
+  save(); closeBudgetMenu();
+  showToast('🗑️ Budget deleted');
+  refreshInsights();
+}
+
+function editBudget(){
+  const id=S.activeBudgetId;
+  if(id==null) return;
+  const b=S.budgets.find(x=>x.id===id);
+  closeBudgetMenu();
+  if(!b) return;
+  S.editingBudgetId=b.id;
+  document.getElementById('bud-amount').value=budAmt(b).toFixed(2);
+  document.getElementById('bud-cat-display').value=b.category;
+  document.getElementById('bud-cat-display').dataset.icon=b.icon||'📋';
+  document.getElementById('bud-recurrence').value=b.recurrence||'Monthly';
+  document.querySelector('#form-budget h1').textContent='Edit Budget';
+  document.querySelector('#form-budget .btn-primary').textContent='Update Budget';
+  document.getElementById('form-budget').classList.add('open');
+}
+
 function deleteTxn(){
   const id=S.activeTxnId;
   if(id==null) return;
@@ -1534,8 +1591,17 @@ function openIncomeForm(){
   document.getElementById('inc-date').value=todayStr();
   document.getElementById('form-income').classList.add('open');
 }
-function openBudgetForm(){  document.getElementById('form-budget').classList.add('open'); }
-function closeForm(id){     document.getElementById(id).classList.remove('open'); S.editingId=null; }
+function openBudgetForm(){
+  S.editingBudgetId=null;
+  document.querySelector('#form-budget h1').textContent='Set Budget';
+  document.querySelector('#form-budget .btn-primary').textContent='Set Budget';
+  document.getElementById('bud-amount').value='';
+  document.getElementById('bud-cat-display').value='';
+  document.getElementById('bud-cat-display').dataset.icon='';
+  document.getElementById('bud-recurrence').value='Monthly';
+  document.getElementById('form-budget').classList.add('open');
+}
+function closeForm(id){     document.getElementById(id).classList.remove('open'); S.editingId=null; S.editingBudgetId=null; }
 
 function showFabMenu(){
   const t=S.insTab;
@@ -1592,15 +1658,23 @@ function submitBudget(){
   const amount=parseFloat(document.getElementById('bud-amount').value);
   const cat=document.getElementById('bud-cat-display').value;
   const icon=document.getElementById('bud-cat-display').dataset.icon||'📋';
+  const recurrence=document.getElementById('bud-recurrence').value;
   if(!amount||amount<=0){ showToast('⚠️ Enter a valid amount'); return; }
   if(!cat){ showToast('⚠️ Select a category'); return; }
-  // replace existing budget for same category
-  S.budgets=S.budgets.filter(b=>b.category!==cat);
-  S.budgets.push({category:cat,icon,amount,currency:S.currency,recurrence:document.getElementById('bud-recurrence').value,id:Date.now()});
+  const editing=S.editingBudgetId;
+  if(editing!=null){
+    const b=S.budgets.find(x=>x.id===editing);
+    if(b){ b.amount=amount; b.currency=S.currency; b.category=cat; b.icon=icon; b.recurrence=recurrence; }
+  } else {
+    // replace existing budget for same category
+    S.budgets=S.budgets.filter(b=>b.category!==cat);
+    S.budgets.push({category:cat,icon,amount,currency:S.currency,recurrence,id:Date.now()});
+  }
+  S.editingBudgetId=null;
   save(); closeForm('form-budget');
   document.getElementById('bud-amount').value='';
   document.getElementById('bud-cat-display').value='';
-  showToast('✓ Budget set'); refreshInsights();
+  showToast(editing!=null?'✓ Budget updated':'✓ Budget set'); refreshInsights();
 }
 
 // ── STATEMENT PDF DOWNLOAD ─────────────────────────────
