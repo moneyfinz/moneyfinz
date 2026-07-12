@@ -1938,10 +1938,17 @@ function enterPaywallScreen(){
   document.getElementById('bottom-nav').style.display='none';
 }
 function enterMainApp(){
-  hideAllTopScreens();
   document.getElementById('bottom-nav').style.display='flex';
-  switchTab('home');
-  if(!appInitialized){ initAppUI(); appInitialized = true; }
+  if(!appInitialized){
+    // First time entering after login/signup: show the shell and land on Home.
+    hideAllTopScreens();
+    switchTab('home');
+    initAppUI();
+    appInitialized = true;
+  }
+  // On repeat calls (triggered by our own Firestore writes echoing back
+  // through onSnapshot after every save/delete/edit) the user is already
+  // inside the app — don't touch which screen or tab is currently showing.
 }
 function initAppUI(){
   migrateLegacyCurrency();
