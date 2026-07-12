@@ -630,7 +630,7 @@ html,body{height:100%;overflow:hidden;background:#fff;
 </div>
 
 <!-- ══════════ HOME ══════════ -->
-<div class="screen active" id="screen-home">
+<div class="screen" id="screen-home">
   <div class="scroll">
     <!-- Hero -->
     <div class="home-hero">
@@ -1913,6 +1913,7 @@ function enterPaywallScreen(){
   document.getElementById('bottom-nav').style.display='none';
 }
 function enterMainApp(){
+  hideAllTopScreens();
   document.getElementById('bottom-nav').style.display='flex';
   switchTab('home');
   if(!appInitialized){ initAppUI(); appInitialized = true; }
