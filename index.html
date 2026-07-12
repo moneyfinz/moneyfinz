@@ -1019,6 +1019,8 @@ const S = {
   txns: JSON.parse(localStorage.getItem('pt_txns')||'[]'),
   budgets: JSON.parse(localStorage.getItem('pt_bud')||'[]'),
   currency: localStorage.getItem('pt_currency')||'USD',
+  rates: JSON.parse(localStorage.getItem('pt_rates')||'null'),
+  ratesDate: localStorage.getItem('pt_rates_date')||'',
   offset: 0,
   insTab: 'overview',
   catFor: '',
@@ -1118,6 +1120,38 @@ function fmt(n){ return getCurrency().symbol+n.toFixed(2); }
 function fmtShort(n){ return getCurrency().symbol+Math.round(n); }
 function fmtPdf(n){ return getCurrency().code+' '+n.toFixed(2); }
 
+// ── CURRENCY CONVERSION ─────────────────────────────────
+// Converts an amount that was originally entered in `from` currency into
+// the currently selected display currency, using exchange rates cached
+// from https://open.er-api.com (base: USD, refreshed once per day).
+function convert(amount, from, to){
+  from = from || 'USD';
+  if(from===to || !S.rates) return amount;
+  const rFrom = S.rates[from], rTo = S.rates[to];
+  if(!rFrom || !rTo) return amount; // unknown code — show as-is rather than guess
+  return (amount / rFrom) * rTo;
+}
+function txAmt(t){ return convert(t.amount, t.currency||'USD', S.currency); }
+function budAmt(b){ return convert(b.amount, b.currency||'USD', S.currency); }
+
+async function refreshRates(force){
+  const today = new Date().toISOString().slice(0,10);
+  if(!force && S.rates && S.ratesDate===today) return;
+  try{
+    const res = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await res.json();
+    if(data && data.result==='success' && data.rates){
+      S.rates = data.rates;
+      S.ratesDate = today;
+      localStorage.setItem('pt_rates', JSON.stringify(S.rates));
+      localStorage.setItem('pt_rates_date', S.ratesDate);
+      renderHome(); refreshInsights();
+    }
+  } catch(e){
+    console.log('Exchange rate refresh failed, using last cached rates:', e);
+  }
+}
+
 // ── GREETING (synced to the phone's local clock) ───────
 function getGreeting(){
   const h=new Date().getHours();
@@ -1175,8 +1209,8 @@ function changeMonth(d){
 // ── RENDER HOME ───────────────────────────────────────
 function renderHome(){
   updateGreeting();
-  const income=S.txns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const expense=S.txns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const income=S.txns.filter(t=>t.type==='income').reduce((s,t)=>s+txAmt(t),0);
+  const expense=S.txns.filter(t=>t.type==='expense').reduce((s,t)=>s+txAmt(t),0);
   document.getElementById('home-balance').textContent=fmt(income-expense);
   document.getElementById('home-income').textContent=fmtShort(income);
   document.getElementById('home-expense').textContent=fmtShort(expense);
@@ -1202,15 +1236,15 @@ function txRow(t){
       <div class="tx-name">${t.category}</div>
       <div class="tx-date">${ds}${t.note?' · '+t.note:''}</div>
     </div>
-    <div class="tx-amount ${t.type}">${sign}${fmt(t.amount)}</div>
+    <div class="tx-amount ${t.type}">${sign}${fmt(txAmt(t))}</div>
   </div>`;
 }
 
 // ── RENDER INSIGHTS ───────────────────────────────────
 function refreshInsights(){
   const txs=txForMonth();
-  const income=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const expense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const income=txs.filter(t=>t.type==='income').reduce((s,t)=>s+txAmt(t),0);
+  const expense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+txAmt(t),0);
   // Newest-first for display, matching Home and History ordering
   const sortedTxs=[...txs].sort((a,b)=> new Date(b.date)-new Date(a.date) || (b.id||0)-(a.id||0));
 
@@ -1241,7 +1275,7 @@ function refreshInsights(){
   if(!exps.length){
     expb.innerHTML=emptyState('No expense transaction found','Track where your money goes','openExpenseForm()','+ Add Expense');
   } else {
-    const total=exps.reduce((s,t)=>s+t.amount,0);
+    const total=exps.reduce((s,t)=>s+txAmt(t),0);
     expb.innerHTML=`<div class="card" style="margin-top:12px">
       <div class="total-block">
         <div class="total-lbl">Total Expense</div>
@@ -1259,9 +1293,10 @@ function refreshInsights(){
     budb.innerHTML=`<div class="card" style="margin-top:12px">
       <div class="card-title">Monthly Budgets</div>
       ${S.budgets.map(b=>{
-        const spent=exps.filter(e=>e.category===b.category).reduce((s,e)=>s+e.amount,0);
-        const pct=Math.min(100,b.amount>0?(spent/b.amount)*100:0);
-        const over=spent>b.amount;
+        const spent=exps.filter(e=>e.category===b.category).reduce((s,e)=>s+txAmt(e),0);
+        const budTotal=budAmt(b);
+        const pct=Math.min(100,budTotal>0?(spent/budTotal)*100:0);
+        const over=spent>budTotal;
         return `<div class="budget-item">
           <div class="budget-header">
             <div class="budget-cat">
@@ -1270,7 +1305,7 @@ function refreshInsights(){
             </div>
             <div class="budget-meta">
               <div class="budget-spent" style="color:${over?'var(--red)':'var(--text)'}">${fmt(spent)}</div>
-              <div class="budget-total">of ${fmt(b.amount)}</div>
+              <div class="budget-total">of ${fmt(budTotal)}</div>
             </div>
           </div>
           <div class="budget-bar-track">
@@ -1287,7 +1322,7 @@ function refreshInsights(){
   if(!incs.length){
     incb.innerHTML=emptyState('No income found','Record your income sources','openIncomeForm()','+ Add Income');
   } else {
-    const total=incs.reduce((s,t)=>s+t.amount,0);
+    const total=incs.reduce((s,t)=>s+txAmt(t),0);
     const saved=total-expense;
     incb.innerHTML=`<div class="card" style="margin-top:12px">
       <div class="total-block">
@@ -1302,7 +1337,7 @@ function refreshInsights(){
       ${incs.map(t=>`<div class="list-item">
         <div class="li-icon">${t.icon||'💰'}</div>
         <div class="li-name">${t.category}</div>
-        <div class="li-amount">${fmt(t.amount)}</div>
+        <div class="li-amount">${fmt(txAmt(t))}</div>
         <div class="li-menu" onclick="openTxnMenu(event, ${t.id})"><i></i><i></i><i></i></div>
       </div>`).join('')}
     </div>`;
@@ -1418,6 +1453,7 @@ function selectCurrency(code){
   updateCurrencyPill();
   renderHome();
   refreshInsights();
+  refreshRates();
   showToast('✓ Currency set to '+code);
 }
 
@@ -1450,7 +1486,7 @@ function editTxn(){
   if(!t) return;
   S.editingId=t.id;
   if(t.type==='income'){
-    document.getElementById('inc-amount').value=t.amount;
+    document.getElementById('inc-amount').value=txAmt(t).toFixed(2);
     document.getElementById('inc-cat-display').value=t.category;
     document.getElementById('inc-cat-display').dataset.icon=t.icon||'💰';
     document.getElementById('inc-date').value=t.date;
@@ -1458,7 +1494,7 @@ function editTxn(){
     document.querySelector('#form-income .btn-primary').textContent='Update Income';
     document.getElementById('form-income').classList.add('open');
   } else {
-    document.getElementById('exp-amount').value=t.amount;
+    document.getElementById('exp-amount').value=txAmt(t).toFixed(2);
     document.getElementById('exp-cat-display').value=t.category;
     document.getElementById('exp-cat-display').dataset.icon=t.icon||'💸';
     document.getElementById('exp-date').value=t.date;
@@ -1512,9 +1548,9 @@ function submitExpense(){
   const editing=S.editingId;
   if(editing){
     const t=S.txns.find(x=>x.id===editing);
-    if(t){ t.amount=amount; t.category=cat; t.icon=icon; t.date=date; t.note=note; }
+    if(t){ t.amount=amount; t.currency=S.currency; t.category=cat; t.icon=icon; t.date=date; t.note=note; }
   } else {
-    S.txns.push({type:'expense',amount,category:cat,icon,date,note,id:Date.now()});
+    S.txns.push({type:'expense',amount,currency:S.currency,category:cat,icon,date,note,id:Date.now()});
   }
   S.editingId=null;
   save(); closeForm('form-expense');
@@ -1534,9 +1570,9 @@ function submitIncome(){
   const editing=S.editingId;
   if(editing){
     const t=S.txns.find(x=>x.id===editing);
-    if(t){ t.amount=amount; t.category=cat; t.icon=icon; t.date=date; }
+    if(t){ t.amount=amount; t.currency=S.currency; t.category=cat; t.icon=icon; t.date=date; }
   } else {
-    S.txns.push({type:'income',amount,category:cat,icon,date,id:Date.now()});
+    S.txns.push({type:'income',amount,currency:S.currency,category:cat,icon,date,id:Date.now()});
   }
   S.editingId=null;
   save(); closeForm('form-income');
@@ -1553,7 +1589,7 @@ function submitBudget(){
   if(!cat){ showToast('⚠️ Select a category'); return; }
   // replace existing budget for same category
   S.budgets=S.budgets.filter(b=>b.category!==cat);
-  S.budgets.push({category:cat,icon,amount,recurrence:document.getElementById('bud-recurrence').value,id:Date.now()});
+  S.budgets.push({category:cat,icon,amount,currency:S.currency,recurrence:document.getElementById('bud-recurrence').value,id:Date.now()});
   save(); closeForm('form-budget');
   document.getElementById('bud-amount').value='';
   document.getElementById('bud-cat-display').value='';
@@ -1638,8 +1674,8 @@ function downloadStatement(txs, periodLabel){
   }
   txs = txs || txForMonth();
   periodLabel = periodLabel || monthLabel();
-  const income = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const expense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const income = txs.filter(t=>t.type==='income').reduce((s,t)=>s+txAmt(t),0);
+  const expense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+txAmt(t),0);
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:'pt', format:'a4' });
@@ -1728,7 +1764,7 @@ function downloadStatement(txs, periodLabel){
       if(t.type==='income') doc.setTextColor(22,163,74); else doc.setTextColor(220,38,38);
       doc.text(t.type==='income'?'Income':'Expense', marginX+280, y+15);
       const sign = t.type==='expense'?'-':'+';
-      doc.text(sign+fmtPdf(t.amount), pageW-marginX-10, y+15, { align:'right' });
+      doc.text(sign+fmtPdf(txAmt(t)), pageW-marginX-10, y+15, { align:'right' });
       y += 22;
     });
   }
@@ -1801,10 +1837,23 @@ function enterMainApp(){
   if(!appInitialized){ initAppUI(); appInitialized = true; }
 }
 function initAppUI(){
+  migrateLegacyCurrency();
   updateCurrencyPill();
   renderHome();
   refreshInsights();
+  refreshRates();
   setInterval(updateGreeting, 60000);
+}
+
+// Entries created before per-transaction currency tracking existed have no
+// `currency` field. Tag them with the currently active currency (rather than
+// defaulting to USD) so existing data isn't suddenly re-scaled the first
+// time this update runs.
+function migrateLegacyCurrency(){
+  let changed = false;
+  S.txns.forEach(t=>{ if(!t.currency){ t.currency=S.currency; changed=true; } });
+  S.budgets.forEach(b=>{ if(!b.currency){ b.currency=S.currency; changed=true; } });
+  if(changed) save();
 }
 
 window.onUserDataChange = function(data){
