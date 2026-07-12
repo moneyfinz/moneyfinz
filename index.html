@@ -926,7 +926,7 @@ html,body{height:100%;overflow:hidden;background:#fff;
     </div>
     <div class="form-group">
       <label>Date</label>
-      <input class="form-input" type="date" id="exp-date" value="2026-06-17">
+      <input class="form-input" type="date" id="exp-date">
     </div>
     <div class="form-group">
       <label>Note (optional)</label>
@@ -958,7 +958,7 @@ html,body{height:100%;overflow:hidden;background:#fff;
     </div>
     <div class="form-group">
       <label>Date</label>
-      <input class="form-input" type="date" id="inc-date" value="2026-06-17">
+      <input class="form-input" type="date" id="inc-date">
     </div>
     <div class="form-group">
       <label>Recurrence</label>
@@ -1119,6 +1119,13 @@ function txForMonth(){
 function fmt(n){ return getCurrency().symbol+n.toFixed(2); }
 function fmtShort(n){ return getCurrency().symbol+Math.round(n); }
 function fmtPdf(n){ return getCurrency().code+' '+n.toFixed(2); }
+// Today's date in YYYY-MM-DD, matching the phone's local clock — used as the
+// default for new expense/income entries instead of a hardcoded date.
+function todayStr(){
+  const d=new Date();
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 
 // ── CURRENCY CONVERSION ─────────────────────────────────
 // Converts an amount that was originally entered in `from` currency into
@@ -1513,7 +1520,7 @@ function openExpenseForm(){
   document.getElementById('exp-amount').value='';
   document.getElementById('exp-cat-display').value='';
   document.getElementById('exp-cat-display').dataset.icon='';
-  document.getElementById('exp-date').value='2026-06-17';
+  document.getElementById('exp-date').value=todayStr();
   document.getElementById('exp-note').value='';
   document.getElementById('form-expense').classList.add('open');
 }
@@ -1524,7 +1531,7 @@ function openIncomeForm(){
   document.getElementById('inc-amount').value='';
   document.getElementById('inc-cat-display').value='';
   document.getElementById('inc-cat-display').dataset.icon='';
-  document.getElementById('inc-date').value='2026-06-17';
+  document.getElementById('inc-date').value=todayStr();
   document.getElementById('form-income').classList.add('open');
 }
 function openBudgetForm(){  document.getElementById('form-budget').classList.add('open'); }
@@ -1541,7 +1548,7 @@ function submitExpense(){
   const amount=parseFloat(document.getElementById('exp-amount').value);
   const cat=document.getElementById('exp-cat-display').value;
   const icon=document.getElementById('exp-cat-display').dataset.icon||'💸';
-  const date=document.getElementById('exp-date').value||'2026-06-17';
+  const date=document.getElementById('exp-date').value||todayStr();
   const note=document.getElementById('exp-note').value.trim();
   if(!amount||amount<=0){ showToast('⚠️ Enter a valid amount'); return; }
   if(!cat){ showToast('⚠️ Select a category'); return; }
@@ -1564,7 +1571,7 @@ function submitIncome(){
   const amount=parseFloat(document.getElementById('inc-amount').value);
   const cat=document.getElementById('inc-cat-display').value;
   const icon=document.getElementById('inc-cat-display').dataset.icon||'💰';
-  const date=document.getElementById('inc-date').value||'2026-06-17';
+  const date=document.getElementById('inc-date').value||todayStr();
   if(!amount||amount<=0){ showToast('⚠️ Enter a valid amount'); return; }
   if(!cat){ showToast('⚠️ Select a category'); return; }
   const editing=S.editingId;
