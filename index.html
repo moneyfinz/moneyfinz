@@ -1271,9 +1271,9 @@ function renderHome(){
     </div>`;
     return;
   }
-  list.innerHTML=recent.map(t=>txRow(t)).join('');
+  list.innerHTML=recent.map(t=>txRow(t, false)).join('');
 }
-function txRow(t){
+function txRow(t, showMenu=true){
   const sign=t.type==='expense'?'-':'+';
   const d=new Date(t.date);
   const ds=d.toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'});
@@ -1284,6 +1284,7 @@ function txRow(t){
       <div class="tx-date">${ds}${t.note?' · '+t.note:''}</div>
     </div>
     <div class="tx-amount ${t.type}">${sign}${fmt(txAmt(t))}</div>
+    ${showMenu?`<div class="li-menu" onclick="openTxnMenu(event, ${t.id})"><i></i><i></i><i></i></div>`:''}
   </div>`;
 }
 
