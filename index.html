@@ -11,6 +11,24 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 
+/* Stop long-press/tap-drag from selecting text, which is what was
+   triggering Chrome's "Tap to search" popup and the copy/selection
+   handles on ordinary UI text (labels, amounts, category names, etc). */
+*{
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+}
+/* Text still needs to be selectable/typeable inside real inputs and
+   textareas, so explicitly re-enable it there. */
+input, textarea{
+  -webkit-user-select:text;
+  -moz-user-select:text;
+  user-select:text;
+  -webkit-touch-callout:default;
+}
+
 :root{
   --blue:#1A56DB;--blue-dark:#1241B8;--blue-light:#EBF2FF;--blue-mid:#DBEAFE;
   --green:#16A34A;--green-light:#DCFCE7;--red:#DC2626;--red-light:#FEE2E2;
