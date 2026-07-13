@@ -2098,6 +2098,25 @@ async function saveAccountName(){
   }
 }
 
+// Remembers the last confirmed-valid subscription so that, if the device
+// goes offline before Firestore's own cache has this document (e.g. right
+// after a fresh install, or before the first online session completes),
+// the user isn't wrongly bounced to the paywall. This is deliberately
+// separate from Firestore's internal offline cache — it's ours to control.
+function cacheSubscriptionStatus(expiryDate){
+  try{
+    localStorage.setItem('pt_sub_cache', JSON.stringify({ subscribed:true, expiryDate: new Date(expiryDate).toISOString() }));
+  }catch(e){}
+}
+function getCachedSubscriptionActive(){
+  try{
+    const raw = localStorage.getItem('pt_sub_cache');
+    if(!raw) return null;
+    const c = JSON.parse(raw);
+    return (c.subscribed && c.expiryDate && new Date(c.expiryDate) > new Date()) ? c.expiryDate : null;
+  }catch(e){ return null; }
+}
+
 window.onUserDataChange = function(data){
   bootResolved = true;
   document.getElementById('screen-boot').style.display='none';
@@ -2111,11 +2130,19 @@ window.onUserDataChange = function(data){
   }
   applyCloudFinanceData(data);
   const now = new Date();
-  const active = !!(data.subscribed && data.expiryDate && new Date(data.expiryDate) > now);
+  let active = !!(data.subscribed && data.expiryDate && new Date(data.expiryDate) > now);
+  let displayExpiry = active ? data.expiryDate : null;
+
+  if(active){
+    cacheSubscriptionStatus(data.expiryDate);
+  } else if(!navigator.onLine){
+    const cachedExpiry = getCachedSubscriptionActive();
+    if(cachedExpiry){ active = true; displayExpiry = cachedExpiry; }
+  }
 
   if(active){
     document.getElementById('account-sub-status').textContent =
-      'Subscription active until ' + new Date(data.expiryDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+      'Subscription active until ' + new Date(displayExpiry).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
     enterMainApp();
   } else {
     if(data.pendingRequest){
