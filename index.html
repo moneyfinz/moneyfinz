@@ -46,13 +46,6 @@ html,body{height:100%;overflow:hidden;background:#fff;
 /* ── SCREENS ── */
 .screen{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 .screen.active{display:flex}
-@media (prefers-reduced-motion: no-preference){
-  .screen.active{animation:screenFadeIn .26s cubic-bezier(.22,.61,.36,1)}
-}
-@keyframes screenFadeIn{
-  from{opacity:0;transform:translateY(8px)}
-  to{opacity:1;transform:translateY(0)}
-}
 
 /* ── SCROLL AREA ── */
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:var(--bg)}
@@ -551,7 +544,7 @@ html,body{height:100%;overflow:hidden;background:#fff;
               // install/login). We can't create the doc without a
               // connection — hand off to the app's own local fallback
               // instead of hanging on the loading screen.
-              window.onUserDataChange && window.onUserDataChange({});
+              window.onUserDataChange && window.onUserDataChange({ __fromCache: true });
               return;
             }
             // Doc missing (e.g. signup happened before Firestore rules were set up).
@@ -572,6 +565,12 @@ html,body{height:100%;overflow:hidden;background:#fff;
           }
           const data = snap.data();
           if (data.expiryDate && data.expiryDate.toDate) data.expiryDate = data.expiryDate.toDate();
+          // Tell the app whether this reading came straight from the server
+          // (authoritative — always trust it, even if it says "not
+          // subscribed") or from Firestore's local on-device cache
+          // (possibly stale — safe to fall back to our own last-known-good
+          // subscription record while we wait for the real server answer).
+          data.__fromCache = snap.metadata.fromCache;
           window.onUserDataChange && window.onUserDataChange(data);
         }, (err) => {
           console.error('Firestore listen error:', err);
@@ -2150,19 +2149,24 @@ window.onUserDataChange = function(data){
 
   if(active){
     cacheSubscriptionStatus(data.expiryDate);
-  } else {
-    // Live data doesn't show an active subscription right now — this can
-    // mean it's genuinely expired, OR it can mean we simply don't have a
-    // fresh answer from the server yet (offline, slow reconnect, or a
-    // stale/incomplete cached read — navigator.onLine is not reliable
-    // enough to distinguish these). Either way, fall back to the last
-    // confirmed-valid subscription stored on this device. Since that
-    // fallback is itself checked against its own expiry date, it can
-    // never grant access past when the subscription actually expired —
-    // it only bridges the gap until a fresh server answer arrives.
+  } else if(data.__fromCache){
+    // This reading came from Firestore's local on-device cache, not a
+    // confirmed server response (e.g. we're offline, or the fresh server
+    // answer just hasn't arrived yet). We can't fully trust "not
+    // subscribed" here, so fall back to the last confirmed-valid
+    // subscription stored on this device. That fallback is itself checked
+    // against its own expiry date, so it can never grant access past when
+    // the subscription actually expired — it only bridges the gap until a
+    // fresh, authoritative server answer arrives.
     const cachedExpiry = getCachedSubscriptionActive();
     if(cachedExpiry){ active = true; displayExpiry = cachedExpiry; }
   }
+  // else: this is a confirmed answer straight from the server (not from
+  // cache) saying the subscription is not active — always trust that
+  // immediately, even if a stale local fallback would otherwise say
+  // "active". This is what makes turning a subscription on/off from the
+  // Firebase console take effect live, right away, instead of only after
+  // the app is closed and reopened.
 
   if(active){
     document.getElementById('account-sub-status').textContent =
