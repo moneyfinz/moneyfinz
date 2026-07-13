@@ -397,7 +397,13 @@ html,body{height:100%;overflow:hidden;background:#fff;
   font-size:13.5px;font-weight:600;opacity:0;transition:all .25s;z-index:200;
   white-space:nowrap;pointer-events:none;letter-spacing:.1px;
 }
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.offline-banner{
+  position:fixed;top:0;left:0;right:0;z-index:300;
+  background:#111827;color:#fbbf24;text-align:center;
+  font-size:12.5px;font-weight:600;letter-spacing:.1px;
+  padding:8px 16px;display:none;
+}
+.offline-banner.show{display:block}
 
 /* ── SECTION SPACER ── */
 .spacer{height:12px;background:transparent}
@@ -453,7 +459,8 @@ html,body{height:100%;overflow:hidden;background:#fff;
       onAuthStateChanged, signOut
     } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
     const {
-      getFirestore, doc, setDoc, getDoc, onSnapshot, addDoc, collection, serverTimestamp
+      getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+      doc, setDoc, getDoc, onSnapshot, addDoc, collection, serverTimestamp
     } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
 
     const firebaseConfig = {
@@ -468,7 +475,21 @@ html,body{height:100%;overflow:hidden;background:#fff;
 
     const fbApp = initializeApp(firebaseConfig);
     const auth = getAuth(fbApp);
-    const db = getFirestore(fbApp);
+    // Turn on Firestore's built-in offline persistence: reads/writes made
+    // while the device has no connection are cached in IndexedDB and the
+    // SDK automatically replays/syncs them the moment connectivity comes
+    // back — no manual retry queue needed. Falls back to the normal
+    // in-memory Firestore if persistence can't start (e.g. very old
+    // browsers, or storage disabled), so the app still works either way.
+    let db;
+    try {
+      db = initializeFirestore(fbApp, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      });
+    } catch (e) {
+      console.log('Offline persistence unavailable, falling back to default cache:', e);
+      db = getFirestore(fbApp);
+    }
 
     let unsubUserDoc = null;
 
@@ -584,6 +605,8 @@ html,body{height:100%;overflow:hidden;background:#fff;
 </div>
 
 <div id="app" style="display:none">
+
+<div class="offline-banner" id="offline-banner">📴 You're offline — changes are saved on this device and will sync automatically once you're back online</div>
 
 <!-- ══════════ AUTH (LOGIN / SIGN UP) ══════════ -->
 <div class="screen" id="screen-auth">
@@ -1245,6 +1268,25 @@ function updateGreeting(){
   const el=document.getElementById('hero-greeting');
   if(el) el.textContent=getGreeting();
 }
+
+// ── OFFLINE / ONLINE STATUS ──────────────────────────
+// The app already works fully offline: every entry is written to
+// localStorage immediately (see save()), so nothing here is required
+// for offline data entry to work — this just keeps the user informed
+// and gives the cloud sync an immediate nudge the moment the network
+// comes back, instead of waiting for the next edit.
+function updateOfflineBanner(){
+  const el = document.getElementById('offline-banner');
+  if(!el) return;
+  el.classList.toggle('show', !navigator.onLine);
+}
+window.addEventListener('online', ()=>{
+  updateOfflineBanner();
+  showToast('✅ Back online — syncing your data');
+  syncFinanceToCloud();
+});
+window.addEventListener('offline', updateOfflineBanner);
+updateOfflineBanner();
 
 let toastT;
 { const cy = document.getElementById('app-copyright-year'); if(cy) cy.textContent = new Date().getFullYear(); }
