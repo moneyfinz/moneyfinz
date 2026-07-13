@@ -2008,28 +2008,32 @@ function enterPaywallScreen(){
 }
 function enterMainApp(){
   document.getElementById('bottom-nav').style.display='flex';
-  // Whenever we're confirmed to have an active subscription, the auth and
-  // paywall screens must never stay on top of the app — otherwise (e.g. if
-  // the paywall was ever shown even briefly, such as during a stale/offline
-  // snapshot) it can stay permanently stacked above the tab content, since
-  // switchTab() only manages the home/insights/history screens and never
-  // touches these two.
-  document.getElementById('screen-auth').classList.remove('active');
-  document.getElementById('screen-paywall').classList.remove('active');
+  // Remember which tab (if any) was already showing before we touch
+  // anything, so a routine background sync (e.g. Firestore echoing back
+  // after a save/delete, or a reconnect after being offline) doesn't yank
+  // the user back to Home.
+  const currentTab = TABS.find(t=>document.getElementById('screen-'+t).classList.contains('active'));
+  // Always clear EVERY top-level screen first (auth, paywall, and all
+  // tabs) rather than only removing 'active' from auth/paywall. Going
+  // offline→online can fire more than one Firestore snapshot in quick
+  // succession (a stale cached read followed by the real server read), and
+  // if those calls interleave, auth/paywall and a tab screen could each end
+  // up 'active' at the same time — since screens are plain stacked <div>s,
+  // that shows as the paywall/QR content sitting on top and the home
+  // screen underneath it, instead of a clean switch to Home. Fully
+  // resetting here every time guarantees exactly one screen is ever active
+  // afterwards, no matter what state things were left in.
+  hideAllTopScreens();
   if(!appInitialized){
     // First time entering after login/signup: land on Home.
     switchTab('home');
     initAppUI();
     appInitialized = true;
-  } else if(!TABS.some(t=>document.getElementById('screen-'+t).classList.contains('active'))){
-    // Safety net: if no tab screen is currently showing (e.g. we just
-    // recovered from the paywall on a repeat call), fall back to Home
-    // instead of leaving a blank screen.
-    switchTab('home');
+  } else {
+    // Restore whatever tab the user was already on, falling back to Home
+    // if none was active (e.g. we just recovered from the paywall).
+    switchTab(currentTab || 'home');
   }
-  // On other repeat calls (triggered by our own Firestore writes echoing
-  // back through onSnapshot after every save/delete/edit) the user is
-  // already on a tab screen — don't force-switch away from it.
 }
 function initAppUI(){
   migrateLegacyCurrency();
