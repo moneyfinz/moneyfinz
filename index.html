@@ -1969,6 +1969,12 @@ function downloadStatement(txs, periodLabel){
 let appInitialized = false;
 let authMode = 'login';
 let bootResolved = false;
+// The most recent user-doc payload we received (from Firestore or the
+// offline fallback). Kept around so we can re-run the subscription check
+// on our own, without waiting for a fresh write to arrive from Firestore —
+// see scheduleExpiryWatch() below.
+let lastUserData = null;
+let expiryWatchTimer = null;
 
 function showBootError(msg){
   bootResolved = true;
@@ -2131,8 +2137,42 @@ function getCachedSubscriptionActive(){
   }catch(e){ return null; }
 }
 
+// Firestore's listener only fires when the document changes — it has no
+// idea when a stored expiryDate is simply going to pass with the clock, so
+// nothing tells the app "the subscription just ran out" at that moment.
+// This keeps our own timer running whenever a subscription is active, so
+// expiry is caught live and the paywall shows up on time, without needing
+// any new write from the server or a manual app restart.
+function scheduleExpiryWatch(expiryDate){
+  if(expiryWatchTimer){ clearTimeout(expiryWatchTimer); expiryWatchTimer = null; }
+  if(!expiryDate) return;
+  const msLeft = new Date(expiryDate).getTime() - Date.now();
+  if(msLeft <= 0) return;
+  // Re-check at most every 6 minutes even for long subscriptions, since
+  // browsers/mobile OSes throttle timers heavily once a tab/app is
+  // backgrounded — a single very long setTimeout could arrive minutes late.
+  // Checking this often means expiry is still caught within a few minutes
+  // even if the exact-moment timer got delayed while backgrounded.
+  const step = Math.min(msLeft, 6*60*1000);
+  expiryWatchTimer = setTimeout(function(){
+    if(lastUserData) window.onUserDataChange(lastUserData);
+  }, step);
+}
+
+// A backgrounded/minimized tab or app can have its timers paused or slowed
+// down by the browser/OS, so the exact-moment check above isn't fully
+// reliable on its own. Re-checking the instant the app becomes visible
+// again closes that gap immediately, instead of waiting for the next
+// 6-minute tick or an unrelated Firestore update.
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible' && lastUserData){
+    window.onUserDataChange(lastUserData);
+  }
+});
+
 window.onUserDataChange = function(data){
   bootResolved = true;
+  lastUserData = data;
   document.getElementById('screen-boot').style.display='none';
   document.getElementById('app').style.display='flex';
   if(window.currentUser){
@@ -2167,6 +2207,19 @@ window.onUserDataChange = function(data){
   // "active". This is what makes turning a subscription on/off from the
   // Firebase console take effect live, right away, instead of only after
   // the app is closed and reopened.
+
+  // Firestore only pushes a new snapshot when the DOCUMENT itself changes.
+  // Nothing writes to the document at the exact moment expiryDate passes,
+  // so without this, the app would keep showing "active" right through the
+  // expiry moment and only notice next time some unrelated change happens
+  // to arrive (or the app is closed and reopened). This keeps our own
+  // clock-based watch running so expiry is caught live, on time, on its own.
+  if(active){
+    scheduleExpiryWatch(displayExpiry);
+  } else if(expiryWatchTimer){
+    clearTimeout(expiryWatchTimer);
+    expiryWatchTimer = null;
+  }
 
   if(active){
     document.getElementById('account-sub-status').textContent =
