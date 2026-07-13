@@ -397,13 +397,6 @@ html,body{height:100%;overflow:hidden;background:#fff;
   font-size:13.5px;font-weight:600;opacity:0;transition:all .25s;z-index:200;
   white-space:nowrap;pointer-events:none;letter-spacing:.1px;
 }
-.offline-banner{
-  position:fixed;top:0;left:0;right:0;z-index:300;
-  background:#111827;color:#fbbf24;text-align:center;
-  font-size:12.5px;font-weight:600;letter-spacing:.1px;
-  padding:8px 16px;display:none;
-}
-.offline-banner.show{display:block}
 
 /* ── SECTION SPACER ── */
 .spacer{height:12px;background:transparent}
@@ -542,6 +535,15 @@ html,body{height:100%;overflow:hidden;background:#fff;
         window.currentUser = user;
         unsubUserDoc = onSnapshot(doc(db, 'users', user.uid), async (snap) => {
           if (!snap.exists()) {
+            if (!navigator.onLine) {
+              // Offline with nothing cached yet for this account on this
+              // device (e.g. the very first offline session right after
+              // install/login). We can't create the doc without a
+              // connection — hand off to the app's own local fallback
+              // instead of hanging on the loading screen.
+              window.onUserDataChange && window.onUserDataChange({});
+              return;
+            }
             // Doc missing (e.g. signup happened before Firestore rules were set up).
             // Recreate it with safe defaults; the listener will fire again once it exists.
             try {
@@ -605,8 +607,6 @@ html,body{height:100%;overflow:hidden;background:#fff;
 </div>
 
 <div id="app" style="display:none">
-
-<div class="offline-banner" id="offline-banner">📴 You're offline — changes are saved on this device and will sync automatically once you're back online</div>
 
 <!-- ══════════ AUTH (LOGIN / SIGN UP) ══════════ -->
 <div class="screen" id="screen-auth">
@@ -1271,22 +1271,11 @@ function updateGreeting(){
 
 // ── OFFLINE / ONLINE STATUS ──────────────────────────
 // The app already works fully offline: every entry is written to
-// localStorage immediately (see save()), so nothing here is required
-// for offline data entry to work — this just keeps the user informed
-// and gives the cloud sync an immediate nudge the moment the network
-// comes back, instead of waiting for the next edit.
-function updateOfflineBanner(){
-  const el = document.getElementById('offline-banner');
-  if(!el) return;
-  el.classList.toggle('show', !navigator.onLine);
-}
-window.addEventListener('online', ()=>{
-  updateOfflineBanner();
-  showToast('✅ Back online — syncing your data');
-  syncFinanceToCloud();
-});
-window.addEventListener('offline', updateOfflineBanner);
-updateOfflineBanner();
+// localStorage immediately (see save()), so no visible indicator is
+// needed for offline data entry to work. This just silently gives the
+// cloud sync an immediate nudge the moment the network comes back,
+// instead of waiting for the next edit.
+window.addEventListener('online', ()=>{ syncFinanceToCloud(); });
 
 let toastT;
 { const cy = document.getElementById('app-copyright-year'); if(cy) cy.textContent = new Date().getFullYear(); }
@@ -2016,16 +2005,28 @@ function enterPaywallScreen(){
 }
 function enterMainApp(){
   document.getElementById('bottom-nav').style.display='flex';
+  // Whenever we're confirmed to have an active subscription, the auth and
+  // paywall screens must never stay on top of the app — otherwise (e.g. if
+  // the paywall was ever shown even briefly, such as during a stale/offline
+  // snapshot) it can stay permanently stacked above the tab content, since
+  // switchTab() only manages the home/insights/history screens and never
+  // touches these two.
+  document.getElementById('screen-auth').classList.remove('active');
+  document.getElementById('screen-paywall').classList.remove('active');
   if(!appInitialized){
-    // First time entering after login/signup: show the shell and land on Home.
-    hideAllTopScreens();
+    // First time entering after login/signup: land on Home.
     switchTab('home');
     initAppUI();
     appInitialized = true;
+  } else if(!TABS.some(t=>document.getElementById('screen-'+t).classList.contains('active'))){
+    // Safety net: if no tab screen is currently showing (e.g. we just
+    // recovered from the paywall on a repeat call), fall back to Home
+    // instead of leaving a blank screen.
+    switchTab('home');
   }
-  // On repeat calls (triggered by our own Firestore writes echoing back
-  // through onSnapshot after every save/delete/edit) the user is already
-  // inside the app — don't touch which screen or tab is currently showing.
+  // On other repeat calls (triggered by our own Firestore writes echoing
+  // back through onSnapshot after every save/delete/edit) the user is
+  // already on a tab screen — don't force-switch away from it.
 }
 function initAppUI(){
   migrateLegacyCurrency();
@@ -2135,7 +2136,16 @@ window.onUserDataChange = function(data){
 
   if(active){
     cacheSubscriptionStatus(data.expiryDate);
-  } else if(!navigator.onLine){
+  } else {
+    // Live data doesn't show an active subscription right now — this can
+    // mean it's genuinely expired, OR it can mean we simply don't have a
+    // fresh answer from the server yet (offline, slow reconnect, or a
+    // stale/incomplete cached read — navigator.onLine is not reliable
+    // enough to distinguish these). Either way, fall back to the last
+    // confirmed-valid subscription stored on this device. Since that
+    // fallback is itself checked against its own expiry date, it can
+    // never grant access past when the subscription actually expired —
+    // it only bridges the gap until a fresh server answer arrives.
     const cachedExpiry = getCachedSubscriptionActive();
     if(cachedExpiry){ active = true; displayExpiry = cachedExpiry; }
   }
