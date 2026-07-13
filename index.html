@@ -957,6 +957,10 @@ html,body{height:100%;overflow:hidden;background:#fff;
       <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:18px" id="account-email">-</div>
       <div id="account-sub-status" style="font-size:12.5px;color:var(--text-muted);margin-bottom:18px"></div>
       <button class="btn-outline" style="background:var(--red-light);color:var(--red);width:100%" onclick="handleLogout()">Log Out</button>
+      <div style="text-align:center;margin-top:22px;padding-top:16px;border-top:1px solid var(--border,#eee)">
+        <div style="font-size:11.5px;color:var(--text-muted)">© <span id="app-copyright-year"></span> Moneyfinz. All rights reserved.</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">Support: <a href="mailto:moneyfinz.contact@gmail.com" style="color:var(--blue,#2563eb);text-decoration:none">moneyfinz.contact@gmail.com</a></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1243,6 +1247,7 @@ function updateGreeting(){
 }
 
 let toastT;
+{ const cy = document.getElementById('app-copyright-year'); if(cy) cy.textContent = new Date().getFullYear(); }
 function showToast(msg){
   const el=document.getElementById('toast');
   el.textContent=msg; el.classList.add('show');
