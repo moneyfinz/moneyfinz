@@ -941,6 +941,18 @@ html,body{height:100%;overflow:hidden;background:#fff;
       <button class="modal-close" onclick="closeAccountMenu()">✕</button>
     </div>
     <div style="padding:6px 16px 28px">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">Name</div>
+      <div id="account-name-view" style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+        <div style="font-size:15px;font-weight:700;color:var(--text)" id="account-name">Set your name</div>
+        <span style="color:var(--blue,#2563eb);font-size:13px;cursor:pointer;font-weight:600" onclick="editAccountName()">Edit</span>
+      </div>
+      <div id="account-name-edit" style="display:none;margin-bottom:18px">
+        <input class="form-input" type="text" id="account-name-input" placeholder="Enter your name" maxlength="40" style="margin-bottom:8px">
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" style="flex:1" onclick="saveAccountName()">Save</button>
+          <button class="btn-outline" style="flex:1" onclick="cancelEditAccountName()">Cancel</button>
+        </div>
+      </div>
       <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">Logged in as</div>
       <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:18px" id="account-email">-</div>
       <div id="account-sub-status" style="font-size:12.5px;color:var(--text-muted);margin-bottom:18px"></div>
@@ -2015,12 +2027,40 @@ function applyCloudFinanceData(data){
   }
 }
 
+function editAccountName(){
+  document.getElementById('account-name-view').style.display='none';
+  document.getElementById('account-name-edit').style.display='block';
+  const cur = document.getElementById('account-name').textContent;
+  const input = document.getElementById('account-name-input');
+  input.value = (cur==='Set your name') ? '' : cur;
+  input.focus();
+}
+function cancelEditAccountName(){
+  document.getElementById('account-name-edit').style.display='none';
+  document.getElementById('account-name-view').style.display='flex';
+}
+async function saveAccountName(){
+  const val = document.getElementById('account-name-input').value.trim();
+  if(!val) return;
+  document.getElementById('account-name').textContent = val;
+  cancelEditAccountName();
+  showToast('✅ Name updated');
+  if(window.fbSaveFinanceData){
+    try{ await window.fbSaveFinanceData({ name: val }); }
+    catch(e){ console.log('Name save failed (will retry on next change):', e); }
+  }
+}
+
 window.onUserDataChange = function(data){
   bootResolved = true;
   document.getElementById('screen-boot').style.display='none';
   document.getElementById('app').style.display='flex';
   if(window.currentUser){
     document.getElementById('account-email').textContent = window.currentUser.email || '-';
+  }
+  const nameEl = document.getElementById('account-name');
+  if(nameEl && document.getElementById('account-name-edit').style.display!=='block'){
+    nameEl.textContent = data.name ? data.name : 'Set your name';
   }
   applyCloudFinanceData(data);
   const now = new Date();
