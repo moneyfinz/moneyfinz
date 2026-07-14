@@ -538,17 +538,28 @@ html,body{height:100%;overflow:hidden;background:#fff;
         window.currentUser = user;
         unsubUserDoc = onSnapshot(doc(db, 'users', user.uid), async (snap) => {
           if (!snap.exists()) {
-            if (!navigator.onLine) {
-              // Offline with nothing cached yet for this account on this
-              // device (e.g. the very first offline session right after
-              // install/login). We can't create the doc without a
-              // connection — hand off to the app's own local fallback
-              // instead of hanging on the loading screen.
+            if (snap.metadata.fromCache) {
+              // This device has no local cache of this document yet (e.g.
+              // right after a fresh install/reinstall, or Chrome's "Clear
+              // data"). That does NOT mean the account has no data on the
+              // server — it only means we haven't heard back from the
+              // server yet. Treat this exactly like being offline: use the
+              // app's own local/last-known-good fallback and wait for the
+              // next snapshot (the real server answer) instead of assuming
+              // the account is new. Critically, we must NOT write anything
+              // here — doing so on a false reading is what used to wipe a
+              // real account's transactions and subscription status the
+              // moment someone reinstalled the app.
               window.onUserDataChange && window.onUserDataChange({ __fromCache: true });
               return;
             }
-            // Doc missing (e.g. signup happened before Firestore rules were set up).
-            // Recreate it with safe defaults; the listener will fire again once it exists.
+            // This is a confirmed answer straight from the server: the
+            // document genuinely does not exist (e.g. signup happened
+            // before Firestore rules were set up). Recreate it with safe
+            // defaults. merge:true is a deliberate extra safety net — even
+            // in this authoritative branch, it guarantees this write can
+            // only ever add/reset these four fields and can never delete
+            // or overwrite anything else that might exist on the document.
             try {
               await setDoc(doc(db, 'users', user.uid), {
                 email: user.email,
@@ -556,7 +567,7 @@ html,body{height:100%;overflow:hidden;background:#fff;
                 expiryDate: null,
                 pendingRequest: false,
                 createdAt: serverTimestamp()
-              });
+              }, { merge: true });
             } catch (e) {
               console.error('Could not create user doc:', e);
               window.onBootError && window.onBootError('Could not set up your account: ' + e.message);
@@ -2096,7 +2107,17 @@ function applyCloudFinanceData(data){
     if(appInitialized){
       updateCurrencyPill(); renderHome(); refreshInsights();
     }
-  } else if(window.fbSaveFinanceData){
+  } else if(!data.__fromCache && window.fbSaveFinanceData){
+    // Only seed the cloud with whatever's in local state when we have a
+    // confirmed, authoritative (non-cached) server answer that the cloud
+    // genuinely has no finance data yet — i.e. this is truly a brand new
+    // account's first sync. If this reading came from Firestore's local
+    // cache instead (e.g. right after a fresh install/reinstall or
+    // Chrome's "Clear data", where the device's cache is empty even
+    // though the account has real data on the server), we don't yet know
+    // whether the cloud is really empty — writing here would overwrite
+    // real cloud data with an empty/default local state and permanently
+    // delete it. Wait for the authoritative server read instead.
     window.fbSaveFinanceData({ txns:S.txns, budgets:S.budgets, currency:S.currency })
       .catch(e=>console.log('Initial cloud seed failed (will retry on next change):', e));
   }
