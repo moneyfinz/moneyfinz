@@ -1875,11 +1875,19 @@ function downloadStatement(txs, periodLabel){
   doc.setTextColor(107,114,128);
   doc.text('Account Statement · Currency: '+getCurrency().code, marginX, y+18);
 
+  // Show the account holder's name under the currency line, but only when
+  // one has actually been set — new accounts default to no name, and we
+  // don't want to print the "Set your name" placeholder onto a real PDF.
+  const accountName = (lastUserData && lastUserData.name) ? lastUserData.name : null;
+  if(accountName){
+    doc.text('Name: '+accountName, marginX, y+34);
+  }
+
   doc.setFontSize(10);
   doc.text('Period: '+periodLabel, pageW-marginX, y, { align:'right' });
   doc.text('Generated: '+new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}), pageW-marginX, y+14, { align:'right' });
 
-  y += 40;
+  y += accountName ? 54 : 40;
   doc.setDrawColor(229,231,235);
   doc.line(marginX, y, pageW-marginX, y);
   y += 24;
