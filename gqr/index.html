@@ -924,7 +924,7 @@ document.getElementById('downloadPng').addEventListener('click', () => {
     const a = document.createElement('a');
     a.href = lastDataUrl;
     const label = dataInput.value.trim().slice(0, 24).replace(/[^a-z0-9]/gi, '_') || 'qrcode';
-    a.download = 'signal-qr-' + label + '.png';
+    a.download = 'QR PLANATE' + label + '.png';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -968,7 +968,7 @@ function renderLog(){
       } else {
         const a = document.createElement('a');
         a.href = logEntries[idx].src;
-        a.download = 'signal-qr-' + idx + '.png';
+        a.download = 'QR PLANATE' + idx + '.png';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
