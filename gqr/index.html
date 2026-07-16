@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SIGNAL — QR Generator</title>
+<title>QR PLANATE</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -446,8 +446,8 @@
     <div class="brand">
       <div class="brand-mark"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
       <div>
-        <div class="brand-name">SIGNAL<em>/QR</em></div>
-        <div class="brand-sub">CLIENT-SIDE GENERATOR · NO LIMITS · NO UPLOADS</div>
+        <div class="brand-name">QR PLANATE<em>/QR</em></div>
+        <div class="brand-sub">QR GENERATOR · NO LIMITS · NO UPLOADS</div>
       </div>
     </div>
     <div class="counter">GENERATED THIS SESSION<b id="genCount">0</b></div>
@@ -571,7 +571,7 @@ const TYPE_ICONS = {
 // combined into the raw string that gets encoded into the QR code.
 const TYPES = [
   { id:'website', label:'Website', sub:'Link to any URL', icon:'link',
-    fields:[{key:'url', label:'Website URL', placeholder:'https://example.com', def:'https://claude.ai'}],
+    fields:[{key:'url', label:'Website URL', placeholder:'https://example.com', def:''}],
     build:v => v.url || '' },
   { id:'text', label:'Text', sub:'Share plain text', icon:'text',
     fields:[{key:'text', label:'Text', type:'textarea', placeholder:'Any text…'}],
@@ -604,7 +604,7 @@ const TYPES = [
     fields:[{key:'url', label:'Link / profile URL', placeholder:'https://…'}],
     build:v => v.url || '' },
   { id:'whatsapp', label:'WhatsApp', sub:'Get WhatsApp messages', icon:'whatsapp',
-    fields:[{key:'number', label:'Phone number (with country code)', placeholder:'+8801XXXXXXXXX'}, {key:'message', label:'Pre-filled message', type:'textarea'}],
+    fields:[{key:'number', label:'Phone number (with country code)', placeholder:'+1XXXXXXXXX'}, {key:'message', label:'Pre-filled message', type:'textarea'}],
     build:v => `https://wa.me/${(v.number||'').replace(/[^0-9]/g,'')}${v.message ? '?text=' + encodeURIComponent(v.message) : ''}` },
   { id:'mp3', label:'MP3', sub:'Share an audio file', icon:'mp3',
     fields:[{key:'url', label:'Audio file URL', placeholder:'https://…'}],
