@@ -159,48 +159,139 @@
 
   .row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 
-  input[type="range"]{
-    width:100%;
-    accent-color:var(--phosphor);
-    background:transparent;
+  /* Segmented control (error correction) */
+  .seg-group{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:6px;
   }
-  .range-val{
+  .seg-btn{
     font-family:var(--mono);
-    color:var(--phosphor);
-    font-size:12px;
-  }
-
-  .swatch-row{display:flex;gap:12px;align-items:center;}
-  input[type="color"]{
-    -webkit-appearance:none;
-    width:44px;height:34px;
+    background:var(--ink);
     border:1px solid var(--line);
-    background:none;
-    padding:0;
-    cursor:pointer;
-  }
-  input[type="color"]::-webkit-color-swatch-wrapper{padding:3px;}
-  input[type="color"]::-webkit-color-swatch{border:none;}
-  .swatch-label{font-family:var(--mono);font-size:12px;color:var(--phosphor-dim);}
-
-  .presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px;}
-  .preset-btn{
-    font-family:var(--mono);
-    font-size:11px;
-    letter-spacing:0.06em;
     color:var(--paper);
-    background:transparent;
-    border:1px solid var(--line);
-    padding:7px 12px;
+    padding:9px 4px;
     cursor:pointer;
+    text-align:center;
+    transition:all .15s ease;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    line-height:1.2;
+  }
+  .seg-btn .seg-letter{font-size:14px;font-weight:700;letter-spacing:0.02em;}
+  .seg-btn .seg-sub{font-size:9px;color:var(--phosphor-dim);letter-spacing:0.03em;}
+  .seg-btn:hover{border-color:var(--phosphor-dim);}
+  .seg-btn.active{border-color:var(--phosphor);background:rgba(78,230,160,0.08);}
+  .seg-btn.active .seg-letter{color:var(--phosphor);}
+  .seg-btn.active .seg-sub{color:var(--phosphor-bright);}
+
+  /* Visual QR-design picker */
+  .style-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+  }
+  .style-swatch{
+    background:var(--ink);
+    border:1px solid var(--line);
+    cursor:pointer;
+    padding:10px 6px 8px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
     transition:all .15s ease;
   }
-  .preset-btn:hover{border-color:var(--phosphor);color:var(--phosphor);}
+  .style-swatch:hover{border-color:var(--phosphor-dim);}
+  .style-swatch.active{border-color:var(--phosphor);background:rgba(78,230,160,0.08);}
+  .style-swatch canvas{
+    width:44px;height:44px;
+    display:block;
+    background:#fff;
+  }
+  .style-swatch .swatch-label{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:0.04em;
+    color:var(--paper);
+    text-transform:uppercase;
+    text-align:center;
+  }
+  .style-swatch.active .swatch-label{color:var(--phosphor);}
+
+  /* Type selector (QR method grid) */
+  .type-panel{margin-bottom:28px;}
+  .type-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px;
+  }
+  @media (max-width:760px){ .type-grid{grid-template-columns:repeat(3,1fr);} }
+  @media (max-width:520px){ .type-grid{grid-template-columns:repeat(2,1fr);} }
+  .type-card{
+    background:var(--ink);
+    border:1px solid var(--line);
+    cursor:pointer;
+    padding:14px 12px;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:5px;
+    text-align:left;
+    transition:all .15s ease;
+    min-width:0;
+  }
+  .type-card:hover{border-color:var(--phosphor-dim);}
+  .type-card.active{border-color:var(--phosphor);background:rgba(78,230,160,0.08);}
+  .type-icon{
+    width:26px;height:26px;
+    color:var(--phosphor-dim);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .type-icon svg{width:100%;height:100%;display:block;}
+  .type-card.active .type-icon{color:var(--phosphor);}
+  .type-label{
+    font-family:var(--mono);
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:0.02em;
+    color:var(--paper);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:100%;
+  }
+  .type-card.active .type-label{color:var(--phosphor);}
+  .type-sub{
+    font-family:var(--mono);
+    font-size:9.5px;
+    color:var(--phosphor-dim);
+    letter-spacing:0.02em;
+    line-height:1.3;
+  }
+
+  /* Dynamic fields (per selected type) */
+  #fieldsContainer label{margin-top:20px;}
+  #fieldsContainer label:first-child{margin-top:0;}
+  #fieldsContainer input[type="text"]{
+    width:100%;
+    background:var(--ink);
+    border:1px solid var(--line);
+    color:var(--paper);
+    font-family:var(--mono);
+    font-size:14px;
+    padding:12px 14px;
+    outline:none;
+    transition:border-color .15s ease;
+  }
+  #fieldsContainer input[type="text"]:focus{border-color:var(--phosphor);}
 
   /* Preview panel */
   .scan-frame{
     position:relative;
-    background:var(--paper);
+    background:#ffffff;
     width:340px;
     max-width:100%;
     aspect-ratio:1/1;
@@ -362,48 +453,39 @@
     <div class="counter">GENERATED THIS SESSION<b id="genCount">0</b></div>
   </header>
 
+  <div class="panel type-panel">
+    <div class="eyebrow">Select type</div>
+    <div class="type-grid" id="typeGrid"></div>
+  </div>
+
   <div class="grid">
     <!-- CONTROLS -->
     <div class="panel">
-      <div class="eyebrow">Input</div>
+      <div class="eyebrow" id="inputEyebrow">Input</div>
 
-      <label for="dataInput">Text, URL, or data <span class="hint">— any length</span></label>
-      <textarea id="dataInput" placeholder="https://example.com or any text…">https://claude.ai</textarea>
+      <div id="fieldsContainer"></div>
+      <textarea id="dataInput" style="display:none;"></textarea>
 
-      <div class="row">
-        <div>
-          <label for="ecLevel">Error correction</label>
-          <select id="ecLevel">
-            <option value="L">L — 7% (max data)</option>
-            <option value="M" selected>M — 15% (balanced)</option>
-            <option value="Q">Q — 25%</option>
-            <option value="H">H — 30% (max recovery)</option>
-          </select>
-        </div>
-        <div>
-          <label for="sizeRange">Size <span class="range-val" id="sizeVal">320px</span></label>
-          <input type="range" id="sizeRange" min="120" max="600" step="10" value="320">
-        </div>
+      <label>Error correction</label>
+      <div class="seg-group" id="ecGroup">
+        <button class="seg-btn" data-ec="L" type="button"><span class="seg-letter">L</span><span class="seg-sub">7%</span></button>
+        <button class="seg-btn active" data-ec="M" type="button"><span class="seg-letter">M</span><span class="seg-sub">15%</span></button>
+        <button class="seg-btn" data-ec="Q" type="button"><span class="seg-letter">Q</span><span class="seg-sub">25%</span></button>
+        <button class="seg-btn" data-ec="H" type="button"><span class="seg-letter">H</span><span class="seg-sub">30%</span></button>
       </div>
 
-      <label>Colors</label>
-      <div class="row">
-        <div class="swatch-row">
-          <input type="color" id="fgColor" value="#0d1210">
-          <span class="swatch-label">Modules</span>
-        </div>
-        <div class="swatch-row">
-          <input type="color" id="bgColor" value="#eef1ec">
-          <span class="swatch-label">Background</span>
-        </div>
-      </div>
+      <label for="sizeSelect">Size</label>
+      <select id="sizeSelect">
+        <option value="200">200 × 200 px</option>
+        <option value="300" selected>300 × 300 px</option>
+        <option value="400">400 × 400 px</option>
+        <option value="500">500 × 500 px</option>
+        <option value="600">600 × 600 px</option>
+        <option value="800">800 × 800 px</option>
+      </select>
 
-      <div class="presets">
-        <button class="preset-btn" data-preset="classic">Classic B/W</button>
-        <button class="preset-btn" data-preset="phosphor">Phosphor</button>
-        <button class="preset-btn" data-preset="invert">Inverted</button>
-        <button class="preset-btn" data-preset="signal">Signal Red</button>
-      </div>
+      <label>QR design <span class="hint">— module shape</span></label>
+      <div class="style-grid" id="styleGrid"></div>
     </div>
 
     <!-- PREVIEW -->
@@ -445,17 +527,303 @@ let lastDataUrl = null;
 const logEntries = [];
 
 const dataInput = document.getElementById('dataInput');
-const ecLevel = document.getElementById('ecLevel');
-const sizeRange = document.getElementById('sizeRange');
-const sizeVal = document.getElementById('sizeVal');
-const fgColor = document.getElementById('fgColor');
-const bgColor = document.getElementById('bgColor');
+const sizeSelect = document.getElementById('sizeSelect');
+const ecGroup = document.getElementById('ecGroup');
+const styleGrid = document.getElementById('styleGrid');
+let currentEc = 'M';
+let currentStyle = 'square';
+const FG_COLOR = '#000000';
+const BG_COLOR = '#ffffff';
 const canvas = document.getElementById('qrcode');
 const ctx = canvas.getContext('2d');
 const qrImage = document.getElementById('qrImage');
 const scanFrame = document.getElementById('scanFrame');
 const statusText = document.getElementById('statusText');
 const genCountEl = document.getElementById('genCount');
+
+// ---------- QR Type / Method selector ----------
+
+// Small generic line-icon set (not brand logos) drawn in the terminal style.
+const TYPE_ICONS = {
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 15l6-6"/><path d="M11 6l1.5-1.5a3.54 3.54 0 015 5L16 11"/><path d="M13 18l-1.5 1.5a3.54 3.54 0 01-5-5L8 13"/></svg>',
+  text: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>',
+  mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 6l9 7 9-7"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h3l1.5 5-2 1.5a12 12 0 006.5 6.5l1.5-2 5 1.5v3a2 2 0 01-2.2 2A17 17 0 014 5.2 2 2 0 016 3z"/></svg>',
+  sms: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-4 3.5V16H4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',
+  wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 9a15 15 0 0119 0"/><path d="M5.7 12.6a10.5 10.5 0 0112.6 0"/><path d="M9 16.2a5.8 5.8 0 016 0"/><circle cx="12" cy="19.3" r="0.9" fill="currentColor" stroke="none"/></svg>',
+  vcard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="1.2"/><circle cx="9" cy="10.3" r="2"/><path d="M5.5 16.5c.6-2 2-3 3.5-3s2.9 1 3.5 3"/><path d="M15 9.5h4M15 12.5h4M15 15.5h2.5"/></svg>',
+  whatsapp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19l1.2-3.6A7.5 7.5 0 1112 19.5a7.4 7.4 0 01-3.4-.8z"/><path d="M9.2 9.6c.2-.6.5-.6.8-.6h.5c.2 0 .4 0 .5.4.2.5.6 1.5.6 1.6.1.2.1.3 0 .5-.1.2-.2.3-.4.5-.2.2-.4.3-.2.6.3.5.8 1.1 1.4 1.5.6.5 1.1.6 1.4.4.2-.1.3-.4.5-.6.1-.2.3-.2.5-.1.2.1 1.4.6 1.6.7.2.1.4.2.4.4 0 .2 0 .9-.4 1.3-.4.4-1.2.7-1.8.7-.5 0-1.7-.2-3.4-1.5-2-1.6-2.8-3.3-2.9-3.7-.1-.4-.2-.7.1-1.1z"/></svg>',
+  links: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg>',
+  social: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.2"/><circle cx="18" cy="6" r="2.2"/><circle cx="18" cy="18" r="2.2"/><path d="M8 11l8-3.8M8 13l8 3.8"/></svg>',
+  facebook: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M13.8 8.5h-1.6c-.9 0-1.4.5-1.4 1.4V11H9.9v2h1v6h2.3v-6h1.8l.3-2h-2v-1c0-.4.2-.7.7-.7h1.3z"/></svg>',
+  instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><circle cx="12" cy="12" r="3.6"/><circle cx="17.2" cy="6.8" r="0.9" fill="currentColor" stroke="none"/></svg>',
+  pdf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M8.5 13.5v4M8.5 13.5h1a1.5 1.5 0 010 3h-1M13 13.5v4M16 13.5v4M16 15.3h1.6"/></svg>',
+  video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M10.5 9.3v5.4l4.5-2.7z" fill="currentColor" stroke="none"/></svg>',
+  images: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="1.5"/><circle cx="8.3" cy="9.3" r="1.6"/><path d="M4 16.5l5-5 4 4 3-3 4 4"/></svg>',
+  mp3: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 12v0M7 9v6M10 6v12M13 9v6M16 4v16M19 10v4"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.5C10.5 4.3 8 4 6 4.3v13.4c2-.3 4.5 0 6 1.2 1.5-1.2 4-1.5 6-1.2V4.3c-2-.3-4.5 0-6 1.2z"/><path d="M12 5.5v13.4"/></svg>',
+  apps: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>',
+  coupon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a2 2 0 002 2v0a2 2 0 01-2 2v0V10z"/><path d="M3 10a2 2 0 002-2h14a2 2 0 002 2v4a2 2 0 00-2 2H5a2 2 0 00-2-2z"/><path d="M9 8v8" stroke-dasharray="1.6 2"/></svg>',
+  business: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8" width="17" height="11" rx="1.3"/><path d="M8.5 8V6.3A1.3 1.3 0 019.8 5h4.4a1.3 1.3 0 011.3 1.3V8"/><path d="M3.5 12.5h17"/></svg>'
+};
+
+// Each type defines its own small form + how those field values are
+// combined into the raw string that gets encoded into the QR code.
+const TYPES = [
+  { id:'website', label:'Website', sub:'Link to any URL', icon:'link',
+    fields:[{key:'url', label:'Website URL', placeholder:'https://example.com', def:'https://claude.ai'}],
+    build:v => v.url || '' },
+  { id:'text', label:'Text', sub:'Share plain text', icon:'text',
+    fields:[{key:'text', label:'Text', type:'textarea', placeholder:'Any text…'}],
+    build:v => v.text || '' },
+  { id:'pdf', label:'PDF', sub:'Show a PDF', icon:'pdf',
+    fields:[{key:'url', label:'PDF file URL', placeholder:'https://example.com/file.pdf'}],
+    build:v => v.url || '' },
+  { id:'links', label:'List of Links', sub:'Share multiple links', icon:'links',
+    fields:[{key:'links', label:'Links (one per line)', type:'textarea', placeholder:'https://example.com/one\nhttps://example.com/two'}],
+    build:v => v.links || '' },
+  { id:'vcard', label:'vCard', sub:'Digital business card', icon:'vcard',
+    fields:[{key:'name', label:'Full name'}, {key:'phone', label:'Phone'}, {key:'email', label:'Email'}, {key:'org', label:'Company'}],
+    build:v => `BEGIN:VCARD\nVERSION:3.0\nFN:${v.name||''}\nORG:${v.org||''}\nTEL:${v.phone||''}\nEMAIL:${v.email||''}\nEND:VCARD` },
+  { id:'business', label:'Business', sub:'Info about your business', icon:'business',
+    fields:[{key:'name', label:'Business name'}, {key:'phone', label:'Phone'}, {key:'address', label:'Address'}, {key:'website', label:'Website'}],
+    build:v => `BEGIN:VCARD\nVERSION:3.0\nFN:${v.name||''}\nADR:${v.address||''}\nTEL:${v.phone||''}\nURL:${v.website||''}\nEND:VCARD` },
+  { id:'video', label:'Video', sub:'Show a video', icon:'video',
+    fields:[{key:'url', label:'Video URL', placeholder:'https://…'}],
+    build:v => v.url || '' },
+  { id:'images', label:'Images', sub:'Share multiple images', icon:'images',
+    fields:[{key:'url', label:'Gallery / image URL', placeholder:'https://…'}],
+    build:v => v.url || '' },
+  { id:'facebook', label:'Facebook', sub:'Share your Facebook page', icon:'facebook',
+    fields:[{key:'url', label:'Facebook page URL', placeholder:'https://facebook.com/yourpage'}],
+    build:v => v.url || '' },
+  { id:'instagram', label:'Instagram', sub:'Share your Instagram', icon:'instagram',
+    fields:[{key:'url', label:'Instagram URL', placeholder:'https://instagram.com/yourhandle'}],
+    build:v => v.url || '' },
+  { id:'social', label:'Social Media', sub:'Share your social channels', icon:'social',
+    fields:[{key:'url', label:'Link / profile URL', placeholder:'https://…'}],
+    build:v => v.url || '' },
+  { id:'whatsapp', label:'WhatsApp', sub:'Get WhatsApp messages', icon:'whatsapp',
+    fields:[{key:'number', label:'Phone number (with country code)', placeholder:'+8801XXXXXXXXX'}, {key:'message', label:'Pre-filled message', type:'textarea'}],
+    build:v => `https://wa.me/${(v.number||'').replace(/[^0-9]/g,'')}${v.message ? '?text=' + encodeURIComponent(v.message) : ''}` },
+  { id:'mp3', label:'MP3', sub:'Share an audio file', icon:'mp3',
+    fields:[{key:'url', label:'Audio file URL', placeholder:'https://…'}],
+    build:v => v.url || '' },
+  { id:'menu', label:'Menu', sub:'Restaurant menu', icon:'menu',
+    fields:[{key:'url', label:'Menu URL', placeholder:'https://…'}],
+    build:v => v.url || '' },
+  { id:'apps', label:'Apps', sub:'Redirect to an app store', icon:'apps',
+    fields:[{key:'ios', label:'App Store URL'}, {key:'android', label:'Play Store URL'}],
+    build:v => v.ios || v.android || '' },
+  { id:'coupon', label:'Coupon', sub:'Share a coupon', icon:'coupon',
+    fields:[{key:'code', label:'Coupon code'}, {key:'details', label:'Details', type:'textarea'}],
+    build:v => `COUPON: ${v.code||''}${v.details ? '\n' + v.details : ''}` },
+  { id:'wifi', label:'WiFi', sub:'Connect to a network', icon:'wifi',
+    fields:[{key:'ssid', label:'Network name (SSID)'}, {key:'password', label:'Password'}, {key:'encryption', label:'Encryption', type:'select', options:['WPA','WEP','nopass']}],
+    build:v => `WIFI:T:${v.encryption||'WPA'};S:${v.ssid||''};P:${v.password||''};;` },
+  { id:'mail', label:'Email', sub:'Send you an email', icon:'mail',
+    fields:[{key:'to', label:'To'}, {key:'subject', label:'Subject'}, {key:'body', label:'Message', type:'textarea'}],
+    build:v => `mailto:${v.to||''}?subject=${encodeURIComponent(v.subject||'')}&body=${encodeURIComponent(v.body||'')}` },
+  { id:'phone', label:'Phone', sub:'Call a number', icon:'phone',
+    fields:[{key:'number', label:'Phone number', placeholder:'+8801XXXXXXXXX'}],
+    build:v => `tel:${v.number||''}` },
+  { id:'sms', label:'SMS', sub:'Send a text message', icon:'sms',
+    fields:[{key:'number', label:'Phone number'}, {key:'message', label:'Message', type:'textarea'}],
+    build:v => `SMSTO:${v.number||''}:${v.message||''}` }
+];
+
+let currentType = TYPES[0];
+let fieldValues = {};
+
+function buildTypeGrid(){
+  const typeGrid = document.getElementById('typeGrid');
+  typeGrid.innerHTML = '';
+  TYPES.forEach(t => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'type-card' + (t.id === currentType.id ? ' active' : '');
+    btn.dataset.type = t.id;
+    btn.innerHTML = `<span class="type-icon">${TYPE_ICONS[t.icon] || ''}</span><span class="type-label">${t.label}</span><span class="type-sub">${t.sub}</span>`;
+    btn.addEventListener('click', () => selectType(t.id));
+    typeGrid.appendChild(btn);
+  });
+}
+
+function selectType(id){
+  currentType = TYPES.find(t => t.id === id) || TYPES[0];
+  document.querySelectorAll('.type-card').forEach(el => el.classList.toggle('active', el.dataset.type === id));
+  document.getElementById('inputEyebrow').textContent = currentType.label;
+  fieldValues = {};
+  renderFields();
+}
+
+function renderFields(){
+  const container = document.getElementById('fieldsContainer');
+  container.innerHTML = '';
+  currentType.fields.forEach((f, i) => {
+    const lbl = document.createElement('label');
+    lbl.textContent = f.label;
+    container.appendChild(lbl);
+
+    let input;
+    if(f.type === 'textarea'){
+      input = document.createElement('textarea');
+    } else if(f.type === 'select'){
+      input = document.createElement('select');
+      f.options.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o; opt.textContent = o;
+        input.appendChild(opt);
+      });
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+    }
+    if(f.placeholder) input.placeholder = f.placeholder;
+    const initial = fieldValues[f.key] !== undefined ? fieldValues[f.key] : (f.def || '');
+    input.value = initial;
+    fieldValues[f.key] = initial;
+
+    const evt = (f.type === 'select') ? 'change' : 'input';
+    input.addEventListener(evt, () => {
+      fieldValues[f.key] = input.value;
+      updateData();
+    });
+    container.appendChild(input);
+  });
+  updateData();
+}
+
+function updateData(){
+  dataInput.value = currentType.build(fieldValues) || '';
+  scheduleRender();
+}
+
+function drawRoundedSquare(ctx, x, y, w, h, r){
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + w - radius, y);
+  ctx.arcTo(x + w, y, x + w, y + radius, radius);
+  ctx.lineTo(x + w, y + h - radius);
+  ctx.arcTo(x + w, y + h, x + w - radius, y + h, radius);
+  ctx.lineTo(x + radius, y + h);
+  ctx.arcTo(x, y + h, x, y + h - radius, radius);
+  ctx.lineTo(x, y + radius);
+  ctx.arcTo(x, y, x + radius, y, radius);
+  ctx.closePath();
+}
+
+function drawDiamond(ctx, x, y, w, h){
+  const cx = x + w / 2, cy = y + h / 2;
+  ctx.beginPath();
+  ctx.moveTo(cx, y);
+  ctx.lineTo(x + w, cy);
+  ctx.lineTo(cx, y + h);
+  ctx.lineTo(x, cy);
+  ctx.closePath();
+}
+
+function drawClassyRounded(ctx, x, y, w, h){
+  // diamond with two opposite corners rounded off — a common "classy" QR look
+  const cx = x + w / 2, cy = y + h / 2;
+  const r = w * 0.34;
+  ctx.beginPath();
+  ctx.moveTo(cx, y);
+  ctx.arcTo(x + w, y, x + w, cy, r);
+  ctx.lineTo(x + w, cy);
+  ctx.lineTo(cx, y + h);
+  ctx.arcTo(x, y + h, x, cy, r);
+  ctx.lineTo(x, cy);
+  ctx.closePath();
+}
+
+// Paints a single QR module using the given style, into any 2D context —
+// used both for the real QR render and for the tiny style-picker swatches.
+function paintModule(pctx, x, y, w, style){
+  if(style === 'dots'){
+    const r = (w / 2) * 0.86;
+    pctx.beginPath();
+    pctx.arc(x + w / 2, y + w / 2, r, 0, Math.PI * 2);
+    pctx.fill();
+  } else if(style === 'rounded'){
+    drawRoundedSquare(pctx, x, y, w, w, w * 0.32);
+    pctx.fill();
+  } else if(style === 'extra-rounded'){
+    drawRoundedSquare(pctx, x, y, w, w, w * 0.5);
+    pctx.fill();
+  } else if(style === 'classy'){
+    drawDiamond(pctx, x, y, w, w);
+    pctx.fill();
+  } else if(style === 'classy-rounded'){
+    drawClassyRounded(pctx, x, y, w, w);
+    pctx.fill();
+  } else {
+    pctx.fillRect(x, y, w, w);
+  }
+}
+
+const QR_STYLES = [
+  { id: 'square',         label: 'Square' },
+  { id: 'rounded',        label: 'Rounded' },
+  { id: 'extra-rounded',  label: 'Extra round' },
+  { id: 'dots',           label: 'Dots' },
+  { id: 'classy',         label: 'Classy' },
+  { id: 'classy-rounded', label: 'Classy round' }
+];
+
+// Draws a 3x3 sample pattern of a given style onto a small canvas thumbnail.
+function paintSwatch(canvasEl, style){
+  const size = canvasEl.width;
+  const pctx = canvasEl.getContext('2d');
+  pctx.clearRect(0, 0, size, size);
+  pctx.fillStyle = '#ffffff';
+  pctx.fillRect(0, 0, size, size);
+  pctx.fillStyle = '#000000';
+  const cells = 3;
+  const pad = size * 0.12;
+  const cell = (size - pad * 2) / cells;
+  // simple checker-ish sample so the shape reads clearly at tiny size
+  const on = [[1,1,1],[1,0,1],[1,1,0]];
+  for(let row = 0; row < cells; row++){
+    for(let col = 0; col < cells; col++){
+      if(on[row][col]){
+        paintModule(pctx, pad + col * cell, pad + row * cell, cell, style);
+      }
+    }
+  }
+}
+
+function buildStyleGrid(){
+  styleGrid.innerHTML = '';
+  QR_STYLES.forEach(s => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'style-swatch' + (s.id === currentStyle ? ' active' : '');
+    btn.dataset.style = s.id;
+    btn.innerHTML = `<canvas width="44" height="44"></canvas><span class="swatch-label">${s.label}</span>`;
+    btn.addEventListener('click', () => {
+      currentStyle = s.id;
+      styleGrid.querySelectorAll('.style-swatch').forEach(el => el.classList.remove('active'));
+      btn.classList.add('active');
+      scheduleRender();
+    });
+    styleGrid.appendChild(btn);
+    paintSwatch(btn.querySelector('canvas'), s.id);
+  });
+}
+buildStyleGrid();
+buildTypeGrid();
+renderFields();
+
+ecGroup.querySelectorAll('.seg-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentEc = btn.dataset.ec;
+    ecGroup.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    scheduleRender();
+  });
+});
 
 function renderQR(){
   const text = dataInput.value.trim();
@@ -475,12 +843,13 @@ function renderQR(){
 
   try{
     // typeNumber 0 = auto-detect smallest size that fits the data
-    const qr = qrcode(0, ecLevel.value);
+    const qr = qrcode(0, currentEc);
     qr.addData(text);
     qr.make();
 
     const moduleCount = qr.getModuleCount();
-    const displaySize = parseInt(sizeRange.value, 10);
+    const displaySize = parseInt(sizeSelect.value, 10);
+    const style = currentStyle;
 
     // Render at a higher internal resolution than what's shown on screen —
     // otherwise the canvas is exactly display-size pixels, which looks soft
@@ -500,9 +869,9 @@ function renderQR(){
     canvas.width = renderSize;
     canvas.height = renderSize;
 
-    ctx.fillStyle = bgColor.value;
+    ctx.fillStyle = BG_COLOR;
     ctx.fillRect(0, 0, renderSize, renderSize);
-    ctx.fillStyle = fgColor.value;
+    ctx.fillStyle = FG_COLOR;
     for(let row = 0; row < moduleCount; row++){
       for(let col = 0; col < moduleCount; col++){
         if(qr.isDark(row, col)){
@@ -510,7 +879,8 @@ function renderQR(){
           const x = Math.floor((col + QUIET_ZONE_MODULES) * cell);
           const y = Math.floor((row + QUIET_ZONE_MODULES) * cell);
           const w = Math.ceil(cell);
-          ctx.fillRect(x, y, w, w);
+
+          paintModule(ctx, x, y, w, style);
         }
       }
     }
@@ -545,22 +915,8 @@ function scheduleRender(){
   debounceTimer = setTimeout(renderQR, 250);
 }
 
-[dataInput, ecLevel, fgColor, bgColor].forEach(el => el.addEventListener('input', scheduleRender));
-sizeRange.addEventListener('input', () => {
-  sizeVal.textContent = sizeRange.value + 'px';
-  scheduleRender();
-});
-
-document.querySelectorAll('.preset-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const p = btn.dataset.preset;
-    if(p === 'classic'){ fgColor.value='#0d1210'; bgColor.value='#eef1ec'; }
-    if(p === 'phosphor'){ fgColor.value='#0d1210'; bgColor.value='#c8ffe4'; }
-    if(p === 'invert'){ fgColor.value='#eef1ec'; bgColor.value='#0d1210'; }
-    if(p === 'signal'){ fgColor.value='#3a0d0a'; bgColor.value='#ffe4de'; }
-    renderQR();
-  });
-});
+dataInput.addEventListener('input', scheduleRender);
+sizeSelect.addEventListener('change', scheduleRender);
 
 document.getElementById('downloadPng').addEventListener('click', () => {
   if(!lastDataUrl) return;
