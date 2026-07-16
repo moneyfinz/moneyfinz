@@ -452,7 +452,7 @@ html,body{height:100%;overflow:hidden;background:#fff;
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
     const {
       getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-      onAuthStateChanged, signOut
+      onAuthStateChanged, signOut, sendPasswordResetEmail
     } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
     const {
       getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
@@ -501,6 +501,8 @@ html,body{height:100%;overflow:hidden;background:#fff;
     };
 
     window.fbSignIn = (email, password) => signInWithEmailAndPassword(auth, email, password);
+
+    window.fbSendPasswordReset = (email) => sendPasswordResetEmail(auth, email);
 
     window.fbLogout = () => signOut(auth);
 
@@ -669,11 +671,41 @@ html,body{height:100%;overflow:hidden;background:#fff;
       <div class="form-group" style="margin-bottom:18px">
         <label>Password</label>
         <input class="form-input" id="auth-password" type="password" placeholder="••••••••" required minlength="6" autocomplete="current-password">
+        <div id="forgot-password-link" style="text-align:right;margin-top:8px">
+          <a onclick="openForgotPassword()" style="color:var(--blue);font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:none">Forgot password?</a>
+        </div>
       </div>
       <button class="btn-primary" type="submit" id="auth-submit-btn" style="width:100%">Log In</button>
     </form>
     <div class="auth-switch" id="auth-switch">
       Don't have an account? <a onclick="toggleAuthMode()">Sign up</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ FORGOT PASSWORD MODAL ══════════ -->
+<div class="modal-overlay" id="forgot-password-modal" onclick="closeForgotPasswordBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Reset Password</h2>
+      <button class="modal-close" onclick="closeForgotPassword()">✕</button>
+    </div>
+    <div style="padding:6px 16px 28px">
+      <div id="forgot-password-form-block">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Enter your account email and we'll send you a link to reset your password.</p>
+        <div class="auth-error" id="forgot-password-error"></div>
+        <div class="form-group" style="margin-bottom:18px">
+          <label>Email</label>
+          <input class="form-input" id="forgot-password-email" type="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <button class="btn-primary" style="width:100%" id="forgot-password-submit-btn" onclick="handleForgotPasswordSubmit()">Send Reset Link</button>
+      </div>
+      <div id="forgot-password-success-block" style="display:none;text-align:center;padding:8px 0">
+        <p style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px">Check your email</p>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">We've sent a password reset link to <span id="forgot-password-sent-email" style="font-weight:600;color:var(--text)"></span>.</p>
+        <button class="btn-outline" style="width:100%" onclick="closeForgotPassword()">Done</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2318,6 +2350,7 @@ window.onAuthLoggedOut = function(){
 function toggleAuthMode(){
   authMode = authMode==='login' ? 'signup' : 'login';
   document.getElementById('auth-error').classList.remove('show');
+  document.getElementById('forgot-password-link').style.display = authMode==='login' ? 'block' : 'none';
   if(authMode==='signup'){
     document.getElementById('auth-title').textContent='Create account';
     document.getElementById('auth-sub').textContent='Sign up to get started with Moneyfinz';
@@ -2339,6 +2372,64 @@ function friendlyAuthError(err){
   if(code.includes('invalid-email')) return 'Please enter a valid email address.';
   if(code.includes('network-request-failed')) return 'Network error. Please check your connection.';
   return 'Something went wrong. Please try again.';
+}
+
+function openForgotPassword(){
+  const errEl = document.getElementById('forgot-password-error');
+  errEl.classList.remove('show');
+  document.getElementById('forgot-password-form-block').style.display = 'block';
+  document.getElementById('forgot-password-success-block').style.display = 'none';
+  // Pre-fill with whatever the user already typed on the login screen.
+  const loginEmail = document.getElementById('auth-email').value.trim();
+  document.getElementById('forgot-password-email').value = loginEmail;
+  document.getElementById('forgot-password-modal').classList.add('open');
+}
+
+function closeForgotPassword(){
+  document.getElementById('forgot-password-modal').classList.remove('open');
+}
+
+function closeForgotPasswordBg(e){
+  if(e.target === document.getElementById('forgot-password-modal')) closeForgotPassword();
+}
+
+async function handleForgotPasswordSubmit(){
+  const emailEl = document.getElementById('forgot-password-email');
+  const email = emailEl.value.trim();
+  const errEl = document.getElementById('forgot-password-error');
+  errEl.classList.remove('show');
+  if(!email){
+    errEl.textContent = 'Please enter your email address.';
+    errEl.classList.add('show');
+    return;
+  }
+  const btn = document.getElementById('forgot-password-submit-btn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try{
+    await window.fbSendPasswordReset(email);
+    document.getElementById('forgot-password-sent-email').textContent = email;
+    document.getElementById('forgot-password-form-block').style.display = 'none';
+    document.getElementById('forgot-password-success-block').style.display = 'block';
+  } catch(err){
+    // Firebase reports "user-not-found" for emails that aren't registered.
+    // We show the same success screen for that case too, so this form
+    // can't be used to check which emails have an account (a common
+    // privacy/security best practice for "forgot password" flows).
+    const code = (err && err.code) || '';
+    if(code.includes('user-not-found')){
+      document.getElementById('forgot-password-sent-email').textContent = email;
+      document.getElementById('forgot-password-form-block').style.display = 'none';
+      document.getElementById('forgot-password-success-block').style.display = 'block';
+    } else {
+      errEl.textContent = friendlyAuthError(err);
+      errEl.classList.add('show');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 }
 
 async function handleAuthSubmit(e){
