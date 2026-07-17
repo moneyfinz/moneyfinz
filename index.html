@@ -732,14 +732,14 @@ html,body{height:100%;overflow:hidden;background:#fff;
         <div class="pay-steps">
           <div class="pay-step"><div class="pay-step-num">1</div><div>Scan the QR code above from your banking or MFS app.</div></div>
           <div class="pay-step"><div class="pay-step-num">2</div><div>Send exactly ৳20.</div></div>
-          <div class="pay-step"><div class="pay-step-num">3</div><div>Copy the Transaction ID from your payment confirmation and paste it below.</div></div>
+          <div class="pay-step"><div class="pay-step-num">3</div><div>Enter the phone number or bank account number the payment was sent from.</div></div>
         </div>
       </div>
       <div class="pay-card">
         <div class="auth-error" id="pay-error"></div>
         <div class="form-group">
-          <label>Transaction ID</label>
-          <input class="form-input" id="pay-trxid" type="text" placeholder="e.g. 8N7A6XYZ12">
+          <label>Sender's Phone / Bank Account Number</label>
+          <input class="form-input" id="pay-trxid" type="text" placeholder="e.g. 01712345678">
         </div>
         <button class="btn-primary" style="width:100%;margin-top:14px" onclick="submitPaymentRequest()" id="pay-submit-btn">Submit for Approval</button>
       </div>
@@ -750,10 +750,10 @@ html,body{height:100%;overflow:hidden;background:#fff;
       <div class="pay-card pay-pending">
         <span class="pay-status-badge">⏳ Pending Approval</span>
         <p style="font-size:13.5px;color:var(--text-sub);line-height:1.6">
-          We've received your Transaction ID. This is checked manually, so it may take a little while.
+          We've received your payment details. This is checked manually, so it may take a little while.
           The app will unlock automatically as soon as it's approved — no need to reload.
         </p>
-        <p style="font-size:12px;color:var(--text-muted)">Submitted TrxID: <strong id="pay-pending-trxid">-</strong></p>
+        <p style="font-size:12px;color:var(--text-muted)">Submitted Number: <strong id="pay-pending-trxid">-</strong></p>
       </div>
     </div>
   </div>
@@ -2461,7 +2461,7 @@ async function submitPaymentRequest(){
   const errEl = document.getElementById('pay-error');
   errEl.classList.remove('show');
   if(!trxId){
-    errEl.textContent = 'Please enter your Transaction ID.';
+    errEl.textContent = 'Please enter the phone or bank account number.';
     errEl.classList.add('show');
     return;
   }
