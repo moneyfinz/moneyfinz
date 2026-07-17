@@ -416,6 +416,76 @@ html,body{height:100%;overflow:hidden;background:#fff;
   opacity:1;transform:translateX(-50%) translateY(0);
 }
 
+/* ── SUCCESS CHECK ANIMATION ── */
+.success-overlay{
+  position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;
+  background:rgba(17,24,39,0);pointer-events:none;
+  transition:background .25s ease;
+}
+.success-overlay.show{background:rgba(17,24,39,.28)}
+.success-badge{
+  position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center;
+  transform:scale(.4);opacity:0;
+}
+.success-overlay.show .success-badge{
+  animation:successPop .55s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+.success-ring{
+  position:absolute;inset:0;border-radius:50%;border:3px solid var(--green);
+  opacity:0;
+}
+.success-overlay.show .success-ring{
+  animation:successRing 1s ease-out forwards;
+  animation-delay:.12s;
+}
+.success-circle{
+  position:relative;width:76px;height:76px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 8px 24px rgba(22,163,74,.35);
+  display:flex;align-items:center;justify-content:center;
+}
+.success-circle svg{width:38px;height:38px}
+.success-circle path{
+  fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:36;stroke-dashoffset:36;
+}
+.success-overlay.show .success-circle path{
+  animation:successCheck .35s ease-out forwards;
+  animation-delay:.22s;
+}
+.success-label{
+  position:absolute;bottom:-34px;left:50%;transform:translateX(-50%);
+  font-size:13.5px;font-weight:700;color:#fff;white-space:nowrap;
+  opacity:0;
+}
+.success-overlay.show .success-label{
+  animation:successLabel .3s ease-out forwards;
+  animation-delay:.2s;
+}
+@keyframes successPop{
+  0%{transform:scale(.4);opacity:0}
+  55%{transform:scale(1.08);opacity:1}
+  75%{transform:scale(.96)}
+  100%{transform:scale(1);opacity:1}
+}
+@keyframes successRing{
+  0%{transform:scale(.6);opacity:.6}
+  100%{transform:scale(1.7);opacity:0}
+}
+@keyframes successCheck{
+  to{stroke-dashoffset:0}
+}
+@keyframes successLabel{
+  from{opacity:0;transform:translateX(-50%) translateY(4px)}
+  to{opacity:1;transform:translateX(-50%) translateY(0)}
+}
+.success-overlay.hide .success-badge{
+  animation:successOut .3s ease-in forwards;
+}
+@keyframes successOut{
+  to{transform:scale(.7);opacity:0}
+}
+
 /* ── SECTION SPACER ── */
 .spacer{height:12px;background:transparent}
 .section-hdr{
@@ -1215,6 +1285,17 @@ html,body{height:100%;overflow:hidden;background:#fff;
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- SUCCESS ANIMATION OVERLAY -->
+<div class="success-overlay" id="success-overlay">
+  <div class="success-badge">
+    <div class="success-ring"></div>
+    <div class="success-circle">
+      <svg viewBox="0 0 24 24"><path d="M4 12.5L9.2 18 20 6"/></svg>
+    </div>
+    <div class="success-label" id="success-label">Expense added</div>
+  </div>
+</div>
+
 </div><!-- #app -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1462,6 +1543,22 @@ function showToast(msg){
   const el=document.getElementById('toast');
   el.textContent=msg; el.classList.add('show');
   clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2400);
+}
+
+let successT;
+function showSuccessAnim(msg){
+  const overlay=document.getElementById('success-overlay');
+  document.getElementById('success-label').textContent=msg;
+  clearTimeout(successT);
+  overlay.classList.remove('show','hide');
+  // force reflow so the animation restarts every time
+  void overlay.offsetWidth;
+  overlay.classList.add('show');
+  successT=setTimeout(()=>{
+    overlay.classList.add('hide');
+    overlay.classList.remove('show');
+    setTimeout(()=>overlay.classList.remove('hide'),300);
+  },1100);
 }
 
 // ── NAVIGATION ────────────────────────────────────────
@@ -1905,7 +2002,7 @@ function submitExpense(){
   document.getElementById('exp-amount').value='';
   document.getElementById('exp-cat-display').value='';
   document.getElementById('exp-note').value='';
-  showToast(editing?'✓ Expense updated':'✓ Expense added'); refreshInsights(); renderHome();
+  showSuccessAnim(editing?'Expense updated':'Expense added'); refreshInsights(); renderHome();
 }
 
 function submitIncome(){
@@ -1926,7 +2023,7 @@ function submitIncome(){
   save(); closeForm('form-income');
   document.getElementById('inc-amount').value='';
   document.getElementById('inc-cat-display').value='';
-  showToast(editing?'✓ Income updated':'✓ Income added'); refreshInsights(); renderHome();
+  showSuccessAnim(editing?'Income updated':'Income added'); refreshInsights(); renderHome();
 }
 
 function submitBudget(){
@@ -1949,7 +2046,7 @@ function submitBudget(){
   save(); closeForm('form-budget');
   document.getElementById('bud-amount').value='';
   document.getElementById('bud-cat-display').value='';
-  showToast(editing!=null?'✓ Budget updated':'✓ Budget set'); refreshInsights();
+  showSuccessAnim(editing!=null?'Budget updated':'Budget set'); refreshInsights();
 }
 
 // ── STATEMENT PDF DOWNLOAD ─────────────────────────────
