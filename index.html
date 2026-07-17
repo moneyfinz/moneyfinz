@@ -1120,6 +1120,16 @@ html,body{height:100%;overflow:hidden;background:#fff;
       </div>
     </div>
     <div class="form-group">
+      <label>Expense Tag</label>
+      <div class="select-wrap">
+        <select class="form-input" id="exp-tag">
+          <option value="Cash">Cash</option>
+          <option value="Card">Card</option>
+          <option value="Digital Payment">Digital Payment</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
       <label>Date</label>
       <input class="form-input" type="date" id="exp-date">
     </div>
@@ -1823,6 +1833,7 @@ function editTxn(){
     document.getElementById('exp-amount').value=txAmt(t).toFixed(2);
     document.getElementById('exp-cat-display').value=t.category;
     document.getElementById('exp-cat-display').dataset.icon=t.icon||'💸';
+    document.getElementById('exp-tag').value=t.tag||'Cash';
     document.getElementById('exp-date').value=t.date;
     document.getElementById('exp-note').value=t.note||'';
     document.querySelector('#form-expense h1').textContent='Edit Expense';
@@ -1839,6 +1850,7 @@ function openExpenseForm(){
   document.getElementById('exp-amount').value='';
   document.getElementById('exp-cat-display').value='';
   document.getElementById('exp-cat-display').dataset.icon='';
+  document.getElementById('exp-tag').value='Cash';
   document.getElementById('exp-date').value=todayStr();
   document.getElementById('exp-note').value='';
   document.getElementById('form-expense').classList.add('open');
@@ -1876,6 +1888,7 @@ function submitExpense(){
   const amount=parseFloat(document.getElementById('exp-amount').value);
   const cat=document.getElementById('exp-cat-display').value;
   const icon=document.getElementById('exp-cat-display').dataset.icon||'💸';
+  const tag=document.getElementById('exp-tag').value||'Cash';
   const date=document.getElementById('exp-date').value||todayStr();
   const note=document.getElementById('exp-note').value.trim();
   if(!amount||amount<=0){ showToast('⚠️ Enter a valid amount'); return; }
@@ -1883,9 +1896,9 @@ function submitExpense(){
   const editing=S.editingId;
   if(editing){
     const t=S.txns.find(x=>x.id===editing);
-    if(t){ t.amount=amount; t.currency=S.currency; t.category=cat; t.icon=icon; t.date=date; t.note=note; }
+    if(t){ t.amount=amount; t.currency=S.currency; t.category=cat; t.icon=icon; t.tag=tag; t.date=date; t.note=note; }
   } else {
-    S.txns.push({type:'expense',amount,currency:S.currency,category:cat,icon,date,note,id:Date.now()});
+    S.txns.push({type:'expense',amount,currency:S.currency,category:cat,icon,tag,date,note,id:Date.now()});
   }
   S.editingId=null;
   save(); closeForm('form-expense');
