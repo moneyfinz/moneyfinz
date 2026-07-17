@@ -416,74 +416,34 @@ html,body{height:100%;overflow:hidden;background:#fff;
   opacity:1;transform:translateX(-50%) translateY(0);
 }
 
-/* ── SUCCESS CHECK ANIMATION ── */
-.success-overlay{
-  position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;
-  background:rgba(17,24,39,0);pointer-events:none;
-  transition:background .25s ease;
+/* ── SUCCESS POPUP ── */
+.success-popup{
+  position:fixed;left:50%;bottom:calc(var(--nav-h) + 30px);
+  transform:translateX(-50%) translateY(24px);
+  width:78%;max-width:290px;background:var(--white);border-radius:20px;
+  padding:26px 22px 22px;box-shadow:0 10px 40px rgba(0,0,0,.18);
+  text-align:center;opacity:0;pointer-events:none;
+  transition:opacity .3s ease,transform .3s ease;z-index:300;
 }
-.success-overlay.show{background:rgba(17,24,39,.28)}
-.success-badge{
-  position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center;
-  transform:scale(.4);opacity:0;
+.success-popup.show{
+  opacity:1;transform:translateX(-50%) translateY(0);
 }
-.success-overlay.show .success-badge{
-  animation:successPop .55s cubic-bezier(.34,1.56,.64,1) forwards;
+.success-popup-icon{
+  width:64px;height:64px;border-radius:50%;background:var(--green);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
+  transform:scale(0);
 }
-.success-ring{
-  position:absolute;inset:0;border-radius:50%;border:3px solid var(--green);
-  opacity:0;
+.success-popup.show .success-popup-icon{
+  animation:successBounce .5s cubic-bezier(.34,1.56,.64,1) .1s forwards;
 }
-.success-overlay.show .success-ring{
-  animation:successRing 1s ease-out forwards;
-  animation-delay:.12s;
-}
-.success-circle{
-  position:relative;width:76px;height:76px;border-radius:50%;
-  background:var(--green);
-  box-shadow:0 8px 24px rgba(22,163,74,.35);
-  display:flex;align-items:center;justify-content:center;
-}
-.success-circle svg{width:38px;height:38px}
-.success-circle path{
-  fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;
-  stroke-dasharray:36;stroke-dashoffset:36;
-}
-.success-overlay.show .success-circle path{
-  animation:successCheck .35s ease-out forwards;
-  animation-delay:.22s;
-}
-.success-label{
-  position:absolute;bottom:-34px;left:50%;transform:translateX(-50%);
-  font-size:13.5px;font-weight:700;color:#fff;white-space:nowrap;
-  opacity:0;
-}
-.success-overlay.show .success-label{
-  animation:successLabel .3s ease-out forwards;
-  animation-delay:.2s;
-}
-@keyframes successPop{
-  0%{transform:scale(.4);opacity:0}
-  55%{transform:scale(1.08);opacity:1}
-  75%{transform:scale(.96)}
-  100%{transform:scale(1);opacity:1}
-}
-@keyframes successRing{
-  0%{transform:scale(.6);opacity:.6}
-  100%{transform:scale(1.7);opacity:0}
-}
-@keyframes successCheck{
-  to{stroke-dashoffset:0}
-}
-@keyframes successLabel{
-  from{opacity:0;transform:translateX(-50%) translateY(4px)}
-  to{opacity:1;transform:translateX(-50%) translateY(0)}
-}
-.success-overlay.hide .success-badge{
-  animation:successOut .3s ease-in forwards;
-}
-@keyframes successOut{
-  to{transform:scale(.7);opacity:0}
+.success-popup-icon svg{width:28px;height:28px}
+.success-popup-title{font-size:15.5px;font-weight:700;color:var(--text);margin-bottom:4px}
+.success-popup-sub{font-size:12.5px;font-weight:500;color:var(--text-muted);line-height:1.4}
+@keyframes successBounce{
+  0%{transform:scale(0);}
+  60%{transform:scale(1.15);}
+  80%{transform:scale(.92);}
+  100%{transform:scale(1);}
 }
 
 /* ── SECTION SPACER ── */
@@ -1285,15 +1245,12 @@ html,body{height:100%;overflow:hidden;background:#fff;
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- SUCCESS ANIMATION OVERLAY -->
-<div class="success-overlay" id="success-overlay">
-  <div class="success-badge">
-    <div class="success-ring"></div>
-    <div class="success-circle">
-      <svg viewBox="0 0 24 24"><path d="M4 12.5L9.2 18 20 6"/></svg>
-    </div>
-    <div class="success-label" id="success-label">Expense added</div>
+<div class="success-popup" id="success-popup">
+  <div class="success-popup-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 18 20 6"/></svg>
   </div>
+  <div class="success-popup-title" id="success-popup-title">Success!</div>
+  <div class="success-popup-sub" id="success-popup-sub"></div>
 </div>
 
 </div><!-- #app -->
@@ -1545,20 +1502,16 @@ function showToast(msg){
   clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2400);
 }
 
-let successT;
-function showSuccessAnim(msg){
-  const overlay=document.getElementById('success-overlay');
-  document.getElementById('success-label').textContent=msg;
-  clearTimeout(successT);
-  overlay.classList.remove('show','hide');
-  // force reflow so the animation restarts every time
-  void overlay.offsetWidth;
-  overlay.classList.add('show');
-  successT=setTimeout(()=>{
-    overlay.classList.add('hide');
-    overlay.classList.remove('show');
-    setTimeout(()=>overlay.classList.remove('hide'),300);
-  },1100);
+let successPopupT;
+function showSuccessPopup(title,sub){
+  const el=document.getElementById('success-popup');
+  document.getElementById('success-popup-title').textContent=title;
+  document.getElementById('success-popup-sub').textContent=sub||'';
+  el.classList.remove('show');
+  void el.offsetWidth; // force reflow so the bounce animation replays every time
+  el.classList.add('show');
+  clearTimeout(successPopupT);
+  successPopupT=setTimeout(()=>el.classList.remove('show'),2200);
 }
 
 // ── NAVIGATION ────────────────────────────────────────
@@ -2002,7 +1955,8 @@ function submitExpense(){
   document.getElementById('exp-amount').value='';
   document.getElementById('exp-cat-display').value='';
   document.getElementById('exp-note').value='';
-  showSuccessAnim(editing?'Expense updated':'Expense added'); refreshInsights(); renderHome();
+  if(editing){ showToast('✓ Expense updated'); } else { showSuccessPopup('Expense Added Successfully!','Your expense has been added to your records.'); }
+  refreshInsights(); renderHome();
 }
 
 function submitIncome(){
@@ -2023,7 +1977,8 @@ function submitIncome(){
   save(); closeForm('form-income');
   document.getElementById('inc-amount').value='';
   document.getElementById('inc-cat-display').value='';
-  showSuccessAnim(editing?'Income updated':'Income added'); refreshInsights(); renderHome();
+  if(editing){ showToast('✓ Income updated'); } else { showSuccessPopup('Income Added Successfully!','Your income has been added to your records.'); }
+  refreshInsights(); renderHome();
 }
 
 function submitBudget(){
@@ -2046,7 +2001,8 @@ function submitBudget(){
   save(); closeForm('form-budget');
   document.getElementById('bud-amount').value='';
   document.getElementById('bud-cat-display').value='';
-  showSuccessAnim(editing!=null?'Budget updated':'Budget set'); refreshInsights();
+  if(editing!=null){ showToast('✓ Budget updated'); } else { showSuccessPopup('Budget Added Successfully!','Your budget has been set for this category.'); }
+  refreshInsights();
 }
 
 // ── STATEMENT PDF DOWNLOAD ─────────────────────────────
