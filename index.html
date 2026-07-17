@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Moneyfinz</title>
+<title>Moneyfinz – Insights</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1A56DB">
 <link rel="icon" href="icon-192.png">
@@ -287,6 +287,21 @@ html,body{height:100%;overflow:hidden;background:#fff;
 .budget-bar-track{height:7px;background:var(--border);border-radius:99px;overflow:hidden}
 .budget-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--blue),#60A5FA);transition:width .4s ease}
 .budget-bar-fill.over{background:linear-gradient(90deg,var(--red),#F87171)}
+
+/* ── EXPENSE BREAKDOWN (donut chart) ── */
+.donut-row{display:flex;align-items:center;gap:20px;margin-top:4px}
+.donut-wrap{position:relative;width:150px;height:150px;flex-shrink:0}
+.donut-wrap .donut{width:100%;height:100%;border-radius:50%}
+.donut-wrap .donut-hole{
+  position:absolute;top:24%;left:24%;width:52%;height:52%;
+  background:var(--white);border-radius:50%;
+}
+.legend-list{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}
+.legend-row{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text);font-weight:500}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.cat-row{align-items:center}
+.cat-row .li-icon{width:40px;height:40px;font-size:18px;border-radius:12px}
+.cat-row .li-count{font-size:12px;color:var(--text-muted);margin-top:2px}
 
 /* ── FORM SCREEN ── */
 .form-screen{
@@ -1284,6 +1299,62 @@ const INC_CATS = [
   {id:'oth', label:'Other',        icon:'💵'},
 ];
 
+// ── CATEGORY BREAKDOWN (donut chart) ───────────────────
+const CHART_PALETTE=['#7C93D6','#A78BDD','#1A56DB','#16A34A','#F97316','#DC2626','#0EA5E9','#EC4899','#F59E0B','#84CC16','#6366F1','#14B8A6'];
+
+function categoryBreakdown(exps){
+  const map={};
+  exps.forEach(t=>{
+    if(!map[t.category]) map[t.category]={cat:t.category, icon:t.icon||'💰', amount:0, count:0};
+    map[t.category].amount+=txAmt(t);
+    map[t.category].count++;
+  });
+  return Object.values(map).sort((a,b)=>b.amount-a.amount);
+}
+
+function renderExpenseBreakdown(exps, total){
+  if(!exps.length || total<=0) return '';
+  const cats=categoryBreakdown(exps);
+  let cursor=0;
+  const gradParts=cats.map((c,i)=>{
+    const pct = (c.amount/total)*100;
+    const start=cursor; cursor+=pct;
+    c.color=CHART_PALETTE[i%CHART_PALETTE.length];
+    c.pct=pct;
+    return `${c.color} ${start}% ${cursor}%`;
+  }).join(', ');
+  const legend=cats.map(c=>`
+    <div class="legend-row">
+      <span class="legend-dot" style="background:${c.color}"></span>
+      <span>${c.cat} (${c.pct.toFixed(2)}%)</span>
+    </div>`).join('');
+  const catRows=cats.map(c=>`
+    <div class="list-item cat-row">
+      <div class="li-icon" style="background:${c.color}22">${c.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div class="li-name">${c.cat}</div>
+        <div class="li-count">${c.count} Transaction${c.count>1?'s':''}</div>
+      </div>
+      <div class="li-amount" style="color:var(--red)">- ${fmt(c.amount)}</div>
+    </div>`).join('');
+  return `<div class="card" style="margin-top:12px">
+    <div class="card-title">Expense overview</div>
+    <div class="total-block">
+      <div class="total-lbl">Total Expense</div>
+      <div class="total-val" style="color:var(--red)">${fmt(total)}</div>
+    </div>
+    <div class="donut-row">
+      <div class="donut-wrap">
+        <div class="donut" style="background:conic-gradient(${gradParts})"></div>
+        <div class="donut-hole"></div>
+      </div>
+      <div class="legend-list">${legend}</div>
+    </div>
+    <div class="list-lbl" style="margin-top:20px">Top expense categories</div>
+    ${catRows}
+  </div>`;
+}
+
 // ── HELPERS ───────────────────────────────────────────
 // Cloud sync is debounced so rapid edits (e.g. deleting several
 // transactions in a row) don't fire a Firestore write per click.
@@ -1469,30 +1540,32 @@ function refreshInsights(){
   document.getElementById('ov-expense').textContent=expense>0?fmtShort(expense):'N/A';
   document.getElementById('ov-avail').textContent=fmtShort(income-expense);
 
+  // Shared: expense transactions + total for this month
+  const exps=sortedTxs.filter(t=>t.type==='expense');
+  const total=exps.reduce((s,t)=>s+txAmt(t),0);
+  const breakdownCard=renderExpenseBreakdown(exps, total);
+
   // Overview body
   const ovb=document.getElementById('ov-body');
   if(!txs.length){
     ovb.innerHTML=emptyState('No transaction found','Add your first transaction below','openExpenseForm()','+ Add Transaction');
   } else {
     const rows=sortedTxs.map(t=>txRow(t, false)).join('');
-    ovb.innerHTML=`<div class="card" style="margin-top:12px">
+    ovb.innerHTML=`${breakdownCard}
+    <div class="card" style="margin-top:12px">
       <div class="card-title">All Transactions</div>
       ${rows}
     </div>`;
   }
 
   // Expense body
-  const exps=sortedTxs.filter(t=>t.type==='expense');
   const expb=document.getElementById('exp-body');
   if(!exps.length){
     expb.innerHTML=emptyState('No expense transaction found','Track where your money goes','openExpenseForm()','+ Add Expense');
   } else {
-    const total=exps.reduce((s,t)=>s+txAmt(t),0);
-    expb.innerHTML=`<div class="card" style="margin-top:12px">
-      <div class="total-block">
-        <div class="total-lbl">Total Expense</div>
-        <div class="total-val" style="color:var(--red)">${fmt(total)}</div>
-      </div>
+    expb.innerHTML=`${breakdownCard}
+    <div class="card" style="margin-top:12px">
+      <div class="card-title">All Expenses</div>
       ${exps.map(t=>txRow(t)).join('')}
     </div>`;
   }
