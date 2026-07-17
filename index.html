@@ -737,10 +737,29 @@ html,body{height:100%;overflow:hidden;background:#fff;
       </div>
       <div class="pay-card">
         <div class="auth-error" id="pay-error"></div>
-        <div class="form-group">
-          <label>Enter Phone Number / Bank Ac Number</label>
-          <input class="form-input" id="pay-trxid" type="text" placeholder="01712345678 / 458********5664">
+        <div class="seg-control" style="margin-bottom:14px">
+          <button class="seg-btn active" id="pay-method-mfs-btn" onclick="setPaymentMethod('mfs')">MFS</button>
+          <button class="seg-btn" id="pay-method-bank-btn" onclick="setPaymentMethod('bank')">Banking</button>
         </div>
+
+        <div id="pay-method-mfs">
+          <div class="form-group">
+            <label>Sender's Phone Number</label>
+            <input class="form-input" id="pay-mfs-phone" type="text" inputmode="numeric" placeholder="e.g. 01712345678">
+          </div>
+        </div>
+
+        <div id="pay-method-bank" style="display:none">
+          <div class="form-group">
+            <label>Bank Account — Last 4 Digits</label>
+            <input class="form-input" id="pay-bank-account" type="text" inputmode="numeric" maxlength="4" placeholder="e.g. 1234">
+          </div>
+          <div class="form-group" style="margin-top:10px">
+            <label>Card Number — Last 4 Digits</label>
+            <input class="form-input" id="pay-bank-card" type="text" inputmode="numeric" maxlength="4" placeholder="e.g. 5678">
+          </div>
+        </div>
+
         <button class="btn-primary" style="width:100%;margin-top:14px" onclick="submitPaymentRequest()" id="pay-submit-btn">Submit for Approval</button>
       </div>
     </div>
@@ -2455,15 +2474,37 @@ async function handleAuthSubmit(e){
   }
 }
 
+let payMethod = 'mfs';
+function setPaymentMethod(method){
+  payMethod = method;
+  document.getElementById('pay-method-mfs-btn').classList.toggle('active', method==='mfs');
+  document.getElementById('pay-method-bank-btn').classList.toggle('active', method==='bank');
+  document.getElementById('pay-method-mfs').style.display = method==='mfs' ? '' : 'none';
+  document.getElementById('pay-method-bank').style.display = method==='bank' ? '' : 'none';
+  document.getElementById('pay-error').classList.remove('show');
+}
+
 async function submitPaymentRequest(){
-  const trxEl = document.getElementById('pay-trxid');
-  const trxId = trxEl.value.trim();
   const errEl = document.getElementById('pay-error');
   errEl.classList.remove('show');
-  if(!trxId){
-    errEl.textContent = 'Please enter the phone or bank account number.';
-    errEl.classList.add('show');
-    return;
+  let trxId = '';
+  if(payMethod === 'mfs'){
+    const phone = document.getElementById('pay-mfs-phone').value.trim();
+    if(!phone){
+      errEl.textContent = 'Please enter the phone number.';
+      errEl.classList.add('show');
+      return;
+    }
+    trxId = `MFS: ${phone}`;
+  } else {
+    const acc = document.getElementById('pay-bank-account').value.trim();
+    const card = document.getElementById('pay-bank-card').value.trim();
+    if(!acc || !card){
+      errEl.textContent = 'Please enter both last-4-digit numbers.';
+      errEl.classList.add('show');
+      return;
+    }
+    trxId = `Bank: acct ${acc} / card ${card}`;
   }
   const btn = document.getElementById('pay-submit-btn');
   btn.disabled = true;
