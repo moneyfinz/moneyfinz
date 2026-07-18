@@ -998,6 +998,25 @@ html,body{height:100%;overflow:hidden;background:#fff;
   </div>
 </div>
 
+<!-- ══════════ CREATE CATEGORY MODAL ══════════ -->
+<div class="modal-overlay" id="create-cat-modal" onclick="closeCreateCategoryModalBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Create Category</h2>
+      <button class="modal-close" onclick="closeCreateCategoryModal()">✕</button>
+    </div>
+    <div style="padding:6px 16px 28px">
+      <div class="auth-error" id="create-cat-error"></div>
+      <div class="form-group">
+        <label>Category Name</label>
+        <input class="form-input" type="text" id="create-cat-input" placeholder="e.g. Pet care" maxlength="24" autocomplete="off">
+      </div>
+      <button class="btn-primary" style="width:100%;margin-top:16px" onclick="submitCreateCategory()">Add Category</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ TXN ACTION MENU ══════════ -->
 <div class="modal-overlay" id="txn-menu-modal" onclick="closeTxnMenuBg(event)">
   <div class="modal-sheet">
@@ -1230,6 +1249,8 @@ const S = {
   currency: localStorage.getItem('pt_currency')||'USD',
   rates: JSON.parse(localStorage.getItem('pt_rates')||'null'),
   ratesDate: localStorage.getItem('pt_rates_date')||'',
+  customExpCats: JSON.parse(localStorage.getItem('pt_custom_exp_cats')||'[]'),
+  customIncCats: JSON.parse(localStorage.getItem('pt_custom_inc_cats')||'[]'),
   offset: 0,
   insTab: 'overview',
   catFor: '',
@@ -1303,6 +1324,7 @@ const EXP_CATS = [
   {id:'trv',  label:'Travel',        icon:'✈️'},
 ];
 const INC_CATS = [
+  {id:'add', label:'Add Category', icon:'➕', primary:true},
   {id:'sal', label:'Salary',       icon:'💼'},
   {id:'biz', label:'Business',     icon:'🏢'},
   {id:'ast', label:'Asset Income', icon:'🌱'},
@@ -1321,8 +1343,10 @@ function syncFinanceToCloud(){
   if(financeSyncTimer) clearTimeout(financeSyncTimer);
   financeSyncTimer = setTimeout(()=>{
     if(window.fbSaveFinanceData){
-      window.fbSaveFinanceData({ txns:S.txns, budgets:S.budgets, currency:S.currency })
-        .catch(e=>console.log('Cloud sync failed (will retry on next change):', e));
+      window.fbSaveFinanceData({
+        txns:S.txns, budgets:S.budgets, currency:S.currency,
+        customExpCats:S.customExpCats, customIncCats:S.customIncCats
+      }).catch(e=>console.log('Cloud sync failed (will retry on next change):', e));
     }
   }, 600);
 }
@@ -1330,6 +1354,18 @@ function save(){
   localStorage.setItem('pt_txns', JSON.stringify(S.txns));
   localStorage.setItem('pt_bud',  JSON.stringify(S.budgets));
   syncFinanceToCloud();
+}
+// Persists user-created ("Add Category") custom categories, both locally
+// and (debounced) to the cloud alongside the rest of the finance data.
+function saveCustomCats(){
+  localStorage.setItem('pt_custom_exp_cats', JSON.stringify(S.customExpCats));
+  localStorage.setItem('pt_custom_inc_cats', JSON.stringify(S.customIncCats));
+  syncFinanceToCloud();
+}
+// Escapes a user-typed string so it can be safely embedded inside a
+// single-quoted JS string literal within an onclick="..." HTML attribute.
+function jsAttrEscape(s){
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 }
 function getMonth(){
   const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+S.offset);
@@ -1724,13 +1760,23 @@ function renderHistory(){
 // ── CATEGORY MODAL ────────────────────────────────────
 function openCatModal(forType){
   S.catFor=forType;
-  const cats=forType==='income'?INC_CATS:EXP_CATS;
-  document.getElementById('cat-modal-title').textContent=forType==='income'?'Income Category':'Expense Category';
-  document.getElementById('cat-grid').innerHTML=cats.map(c=>`
-    <div class="cat-cell" onclick="pickCat('${c.id}','${c.label}','${c.icon||'💰'}')">
-      <div class="cat-circle ${c.primary?'primary':''}">${c.icon}</div>
+  const isIncome=forType==='income';
+  const builtIn=isIncome?INC_CATS:EXP_CATS;
+  const custom=isIncome?S.customIncCats:S.customExpCats;
+  const cats=[...builtIn, ...custom];
+  document.getElementById('cat-modal-title').textContent=isIncome?'Income Category':'Expense Category';
+  document.getElementById('cat-grid').innerHTML=cats.map(c=>{
+    if(c.id==='add'){
+      return `<div class="cat-cell" onclick="openCreateCategoryModal('${forType}')">
+        <div class="cat-circle primary">${c.icon}</div>
+        <span>${c.label}</span>
+      </div>`;
+    }
+    return `<div class="cat-cell" onclick="pickCat('${c.id}','${jsAttrEscape(c.label)}','${c.icon||'💰'}')">
+      <div class="cat-circle">${c.icon}</div>
       <span>${c.label}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   document.getElementById('cat-modal').classList.add('open');
 }
 function closeCatModal(){ document.getElementById('cat-modal').classList.remove('open'); }
@@ -1741,6 +1787,57 @@ function pickCat(id,label,icon){
   const el=document.getElementById(pre+'-cat-display');
   el.value=label; el.dataset.icon=icon; el.dataset.catid=id;
   closeCatModal();
+}
+
+// ── CREATE CATEGORY (custom, user-named) ───────────────
+// forType is 'expense', 'income', or 'budget' — carried over from
+// whichever form's "Add Category" cell was tapped (S.catFor is already
+// set to it by openCatModal). Budgets share the expense category pool,
+// same as the built-in categories do.
+function openCreateCategoryModal(forType){
+  S.catFor=forType;
+  closeCatModal();
+  document.getElementById('create-cat-input').value='';
+  document.getElementById('create-cat-error').classList.remove('show');
+  document.getElementById('create-cat-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('create-cat-input').focus(), 250);
+}
+function closeCreateCategoryModal(){ document.getElementById('create-cat-modal').classList.remove('open'); }
+function closeCreateCategoryModalBg(e){ if(e.target===document.getElementById('create-cat-modal')) closeCreateCategoryModal(); }
+
+function submitCreateCategory(){
+  const input=document.getElementById('create-cat-input');
+  const name=input.value.trim();
+  const errEl=document.getElementById('create-cat-error');
+  errEl.classList.remove('show');
+
+  if(!name){
+    errEl.textContent='Please enter a category name.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  const isIncome=S.catFor==='income';
+  const builtIn=isIncome?INC_CATS:EXP_CATS;
+  const customList=isIncome?S.customIncCats:S.customExpCats;
+  const taken=[...builtIn, ...customList]
+    .filter(c=>c.id!=='add')
+    .some(c=>c.label.toLowerCase()===name.toLowerCase());
+  if(taken){
+    errEl.textContent='This category already exists.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  const newCat={ id:'custom_'+Date.now(), label:name, icon:isIncome?'💵':'🏷️' };
+  customList.push(newCat);
+  saveCustomCats();
+
+  closeCreateCategoryModal();
+  // Select the freshly created category right away, and refresh the
+  // grid underneath so it appears next time this picker is opened.
+  pickCat(newCat.id, newCat.label, newCat.icon);
+  showToast('✓ Category "'+name+'" added');
 }
 
 // ── CURRENCY MODAL ──────────────────────────────────────
@@ -2295,9 +2392,13 @@ function applyCloudFinanceData(data){
     S.txns = Array.isArray(data.txns) ? data.txns : [];
     S.budgets = Array.isArray(data.budgets) ? data.budgets : [];
     if(data.currency) S.currency = data.currency;
+    S.customExpCats = Array.isArray(data.customExpCats) ? data.customExpCats : S.customExpCats;
+    S.customIncCats = Array.isArray(data.customIncCats) ? data.customIncCats : S.customIncCats;
     localStorage.setItem('pt_txns', JSON.stringify(S.txns));
     localStorage.setItem('pt_bud', JSON.stringify(S.budgets));
     localStorage.setItem('pt_currency', S.currency);
+    localStorage.setItem('pt_custom_exp_cats', JSON.stringify(S.customExpCats));
+    localStorage.setItem('pt_custom_inc_cats', JSON.stringify(S.customIncCats));
     if(appInitialized){
       updateCurrencyPill(); renderHome(); refreshInsights();
     }
@@ -2474,11 +2575,14 @@ window.onAuthLoggedOut = function(){
   // doesn't mistake the previous account's leftover data for "current
   // local data" and push it into the new account.
   S.txns = []; S.budgets = []; S.currency = 'USD'; S.rates = null; S.ratesDate = '';
+  S.customExpCats = []; S.customIncCats = [];
   localStorage.removeItem('pt_txns');
   localStorage.removeItem('pt_bud');
   localStorage.removeItem('pt_currency');
   localStorage.removeItem('pt_rates');
   localStorage.removeItem('pt_rates_date');
+  localStorage.removeItem('pt_custom_exp_cats');
+  localStorage.removeItem('pt_custom_inc_cats');
   enterAuthScreen();
 };
 
