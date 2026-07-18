@@ -2023,10 +2023,9 @@ function openExpenseForm(){
   document.getElementById('exp-amount').value='';
   document.getElementById('exp-cat-display').value='';
   document.getElementById('exp-cat-display').dataset.icon='';
-  document.getElementById('exp-tag-display').value='';
-  document.getElementById('exp-tag-display').dataset.icon='';
-  document.getElementById('exp-tag-display').dataset.tagid='';
-  document.getElementById('exp-date').value=todayStr();
+  document.getElementById('exp-tag-display').value=EXP_TAGS[0].label;
+  document.getElementById('exp-tag-display').dataset.icon=EXP_TAGS[0].icon;
+  document.getElementById('exp-tag-display').dataset.tagid=EXP_TAGS[0].id;
   document.getElementById('exp-note').value='';
   document.getElementById('form-expense').classList.add('open');
 }
