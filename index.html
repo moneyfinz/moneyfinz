@@ -1017,6 +1017,18 @@ html,body{height:100%;overflow:hidden;background:#fff;
   </div>
 </div>
 
+<!-- ══════════ EXPENSE TAG MODAL (payment method) ══════════ -->
+<div class="modal-overlay" id="tag-modal" onclick="closeTagModalBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Select Expense Tag</h2>
+      <button class="modal-close" onclick="closeTagModal()">✕</button>
+    </div>
+    <div class="cat-grid" id="tag-grid"></div>
+  </div>
+</div>
+
 <!-- ══════════ TXN ACTION MENU ══════════ -->
 <div class="modal-overlay" id="txn-menu-modal" onclick="closeTxnMenuBg(event)">
   <div class="modal-sheet">
@@ -1150,6 +1162,12 @@ html,body{height:100%;overflow:hidden;background:#fff;
       <label>Category</label>
       <div class="select-wrap">
         <input class="form-input" type="text" id="exp-cat-display" placeholder="Bills, travel, food…" readonly onclick="openCatModal('expense')">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Expense Tag</label>
+      <div class="select-wrap">
+        <input class="form-input" type="text" id="exp-tag-display" placeholder="Cash, Card, Digital Payment…" readonly onclick="openTagModal()">
       </div>
     </div>
     <div class="form-group">
@@ -1334,6 +1352,11 @@ const INC_CATS = [
   {id:'gift',label:'Gift',         icon:'🎁'},
   {id:'oth', label:'Other',        icon:'💵'},
 ];
+const EXP_TAGS = [
+  {id:'cash',    label:'Cash',             icon:'💵'},
+  {id:'card',    label:'Card',             icon:'💳'},
+  {id:'digital', label:'Digital Payment',  icon:'📱'},
+];
 
 // ── HELPERS ───────────────────────────────────────────
 // Cloud sync is debounced so rapid edits (e.g. deleting several
@@ -1510,7 +1533,7 @@ function txRow(t, showMenu=true){
     <div class="tx-icon">${t.icon||'💰'}</div>
     <div class="tx-info">
       <div class="tx-name">${t.category}</div>
-      <div class="tx-date">${ds}${t.note?' · '+t.note:''}</div>
+      <div class="tx-date">${ds}${t.note?' · '+t.note:''}${t.tag?' · '+t.tag:''}</div>
     </div>
     <div class="tx-amount ${t.type}">${sign}${fmt(txAmt(t))}</div>
     ${showMenu?`<div class="li-menu" onclick="openTxnMenu(event, ${t.id})"><i></i><i></i><i></i></div>`:''}
@@ -1842,6 +1865,23 @@ function submitCreateCategory(){
   showToast('✓ Category "'+name+'" added');
 }
 
+// ── EXPENSE TAG (payment method: Cash / Card / Digital Payment) ────
+function openTagModal(){
+  document.getElementById('tag-grid').innerHTML=EXP_TAGS.map(t=>`
+    <div class="cat-cell" onclick="pickTag('${t.id}','${t.label}','${t.icon}')">
+      <div class="cat-circle">${t.icon}</div>
+      <span>${t.label}</span>
+    </div>`).join('');
+  document.getElementById('tag-modal').classList.add('open');
+}
+function closeTagModal(){ document.getElementById('tag-modal').classList.remove('open'); }
+function closeTagModalBg(e){ if(e.target===document.getElementById('tag-modal')) closeTagModal(); }
+function pickTag(id,label,icon){
+  const el=document.getElementById('exp-tag-display');
+  el.value=label; el.dataset.icon=icon; el.dataset.tagid=id;
+  closeTagModal();
+}
+
 // ── CURRENCY MODAL ──────────────────────────────────────
 function updateCurrencyPill(){
   const c=getCurrency();
@@ -1964,6 +2004,9 @@ function editTxn(){
     document.getElementById('exp-amount').value=txAmt(t).toFixed(2);
     document.getElementById('exp-cat-display').value=t.category;
     document.getElementById('exp-cat-display').dataset.icon=t.icon||'💸';
+    document.getElementById('exp-tag-display').value=t.tag||'';
+    document.getElementById('exp-tag-display').dataset.icon=t.tagIcon||'';
+    document.getElementById('exp-tag-display').dataset.tagid=t.tagId||'';
     document.getElementById('exp-date').value=t.date;
     document.getElementById('exp-note').value=t.note||'';
     document.querySelector('#form-expense h1').textContent='Edit Expense';
@@ -1980,6 +2023,9 @@ function openExpenseForm(){
   document.getElementById('exp-amount').value='';
   document.getElementById('exp-cat-display').value='';
   document.getElementById('exp-cat-display').dataset.icon='';
+  document.getElementById('exp-tag-display').value='';
+  document.getElementById('exp-tag-display').dataset.icon='';
+  document.getElementById('exp-tag-display').dataset.tagid='';
   document.getElementById('exp-date').value=todayStr();
   document.getElementById('exp-note').value='';
   document.getElementById('form-expense').classList.add('open');
@@ -2017,6 +2063,10 @@ function submitExpense(){
   const amount=parseFloat(document.getElementById('exp-amount').value);
   const cat=document.getElementById('exp-cat-display').value;
   const icon=document.getElementById('exp-cat-display').dataset.icon||'💸';
+  const tagEl=document.getElementById('exp-tag-display');
+  const tag=tagEl.value||'';
+  const tagIcon=tagEl.dataset.icon||'';
+  const tagId=tagEl.dataset.tagid||'';
   const date=document.getElementById('exp-date').value||todayStr();
   const note=document.getElementById('exp-note').value.trim();
   if(!amount||amount<=0){ showToast('⚠️ Enter a valid amount'); return; }
@@ -2024,14 +2074,17 @@ function submitExpense(){
   const editing=S.editingId;
   if(editing){
     const t=S.txns.find(x=>x.id===editing);
-    if(t){ t.amount=amount; t.currency=S.currency; t.category=cat; t.icon=icon; t.date=date; t.note=note; }
+    if(t){ t.amount=amount; t.currency=S.currency; t.category=cat; t.icon=icon; t.tag=tag; t.tagIcon=tagIcon; t.tagId=tagId; t.date=date; t.note=note; }
   } else {
-    S.txns.push({type:'expense',amount,currency:S.currency,category:cat,icon,date,note,id:Date.now()});
+    S.txns.push({type:'expense',amount,currency:S.currency,category:cat,icon,tag,tagIcon,tagId,date,note,id:Date.now()});
   }
   S.editingId=null;
   save(); closeForm('form-expense');
   document.getElementById('exp-amount').value='';
   document.getElementById('exp-cat-display').value='';
+  document.getElementById('exp-tag-display').value='';
+  document.getElementById('exp-tag-display').dataset.icon='';
+  document.getElementById('exp-tag-display').dataset.tagid='';
   document.getElementById('exp-note').value='';
   showToast(editing?'✓ Expense updated':'✓ Expense added'); refreshInsights(); renderHome();
 }
