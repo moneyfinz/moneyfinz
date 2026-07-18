@@ -2000,6 +2000,7 @@ function editTxn(){
     document.querySelector('#form-income h1').textContent='Edit Income';
     document.querySelector('#form-income .btn-primary').textContent='Update Income';
     document.getElementById('form-income').classList.add('open');
+    requestAnimationFrame(()=>{ document.getElementById('inc-date').value=t.date; });
   } else {
     document.getElementById('exp-amount').value=txAmt(t).toFixed(2);
     document.getElementById('exp-cat-display').value=t.category;
@@ -2012,6 +2013,7 @@ function editTxn(){
     document.querySelector('#form-expense h1').textContent='Edit Expense';
     document.querySelector('#form-expense .btn-primary').textContent='Update Expense';
     document.getElementById('form-expense').classList.add('open');
+    requestAnimationFrame(()=>{ document.getElementById('exp-date').value=t.date; });
   }
 }
 
@@ -2026,9 +2028,12 @@ function openExpenseForm(){
   document.getElementById('exp-tag-display').value=EXP_TAGS[0].label;
   document.getElementById('exp-tag-display').dataset.icon=EXP_TAGS[0].icon;
   document.getElementById('exp-tag-display').dataset.tagid=EXP_TAGS[0].id;
-  document.getElementById('exp-date').value=todayStr();
   document.getElementById('exp-note').value='';
   document.getElementById('form-expense').classList.add('open');
+  // Some mobile browsers don't visually paint a date <input>'s value if it
+  // was set while the field was still hidden (display:none). Setting it
+  // again on the next frame, after the form is visible, fixes that.
+  requestAnimationFrame(()=>{ document.getElementById('exp-date').value=todayStr(); });
 }
 function openIncomeForm(){
   S.editingId=null;
@@ -2039,6 +2044,7 @@ function openIncomeForm(){
   document.getElementById('inc-cat-display').dataset.icon='';
   document.getElementById('inc-date').value=todayStr();
   document.getElementById('form-income').classList.add('open');
+  requestAnimationFrame(()=>{ document.getElementById('inc-date').value=todayStr(); });
 }
 function openBudgetForm(){
   S.editingBudgetId=null;
