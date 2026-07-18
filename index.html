@@ -288,6 +288,32 @@ html,body{height:100%;overflow:hidden;background:#fff;
 .budget-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--blue),#60A5FA);transition:width .4s ease}
 .budget-bar-fill.over{background:linear-gradient(90deg,var(--red),#F87171)}
 
+/* ── EXPENSE OVERVIEW (donut) ── */
+.card-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title-row .card-title{margin-bottom:0}
+.card-chevron-btn{
+  width:30px;height:30px;border-radius:50%;background:var(--bg);border:none;
+  display:flex;align-items:center;justify-content:center;color:var(--text-muted);
+  cursor:pointer;flex-shrink:0;
+}
+.card-chevron-btn:active{background:var(--border)}
+.expov-wrap{display:flex;align-items:center;justify-content:center;gap:26px;flex-wrap:wrap;padding:4px 0 2px}
+.expov-legend{display:flex;flex-direction:column;gap:11px}
+.expov-legend-item{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text-sub);font-weight:500}
+.expov-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+.cat-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--border);cursor:pointer}
+.cat-row:first-child{border-top:none;padding-top:0}
+.cat-row-icon{
+  width:44px;height:44px;border-radius:50%;background:var(--blue-light);
+  display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;
+}
+.cat-row-info{flex:1;min-width:0}
+.cat-row-name{font-size:15px;font-weight:700;color:var(--text)}
+.cat-row-sub{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.cat-row-amount{font-size:14.5px;font-weight:700;color:var(--red);white-space:nowrap}
+.cat-row-chevron{color:var(--text-muted);flex-shrink:0;margin-left:2px}
+
 /* ── FORM SCREEN ── */
 .form-screen{
   display:none;flex-direction:column;position:fixed;inset:0;
@@ -1455,6 +1481,88 @@ function txRow(t, showMenu=true){
   </div>`;
 }
 
+// ── EXPENSE OVERVIEW (donut chart) ─────────────────────
+const DONUT_COLORS=['#7C93C9','#A78BFA','#F97316','#34D399','#F87171','#FBBF24','#38BDF8','#F472B6','#94A3B8','#4ADE80'];
+
+// Jump to another tab inside Insights (used by the chevron / row taps below)
+function goToInsightTab(tab){
+  const order=['overview','expense','budget','income'];
+  const idx=order.indexOf(tab);
+  const btn=document.querySelector('#insights-tabs button:nth-child('+(idx+1)+')');
+  if(btn) switchInsightTab(tab, btn);
+}
+
+function expenseOverviewHTML(exps, total){
+  if(!exps.length || total<=0) return '';
+
+  // Group by category
+  const map={};
+  exps.forEach(t=>{
+    if(!map[t.category]) map[t.category]={name:t.category, icon:t.icon||'💰', amount:0, count:0};
+    map[t.category].amount+=txAmt(t);
+    map[t.category].count++;
+  });
+  const cats=Object.values(map).sort((a,b)=>b.amount-a.amount);
+
+  // Build donut ring segments (SVG stroke-dasharray technique)
+  const r=45, cx=60, cy=60;
+  const circumference=2*Math.PI*r;
+  let cumulative=0;
+  const segs=cats.map((c,i)=>{
+    const pct=c.amount/total;
+    const dash=pct*circumference;
+    const offset=-(cumulative*circumference);
+    cumulative+=pct;
+    return {...c, pct, dash, offset, color:DONUT_COLORS[i%DONUT_COLORS.length]};
+  });
+
+  const ringSvg=`<svg viewBox="0 0 120 120" width="150" height="150">
+    <g transform="rotate(-90 ${cx} ${cy})">
+      ${segs.map(s=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="20"
+        stroke-dasharray="${s.dash.toFixed(3)} ${(circumference-s.dash).toFixed(3)}"
+        stroke-dashoffset="${s.offset.toFixed(3)}"/>`).join('')}
+    </g>
+  </svg>`;
+
+  const legend=`<div class="expov-legend">
+    ${segs.map(s=>`<div class="expov-legend-item">
+      <span class="expov-dot" style="background:${s.color}"></span>
+      <span>${s.name} (${(s.pct*100).toFixed(2)}%)</span>
+    </div>`).join('')}
+  </div>`;
+
+  const catRows=segs.map(s=>`<div class="cat-row" onclick="goToInsightTab('expense')">
+    <div class="cat-row-icon">${s.icon}</div>
+    <div class="cat-row-info">
+      <div class="cat-row-name">${s.name}</div>
+      <div class="cat-row-sub">${s.count} Transaction${s.count>1?'s':''}</div>
+    </div>
+    <div class="cat-row-amount">- ${fmt(s.amount)}</div>
+    <svg class="cat-row-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>`).join('');
+
+  return `<div class="card" style="margin-top:12px">
+    <div class="card-title-row">
+      <div class="card-title">Expense overview</div>
+      <button class="card-chevron-btn" onclick="goToInsightTab('expense')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <div class="total-block" style="margin-bottom:6px">
+      <div class="total-lbl">Total Expense</div>
+      <div class="total-val">${fmt(total)}</div>
+    </div>
+    <div class="expov-wrap">
+      ${ringSvg}
+      ${legend}
+    </div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <div class="card-title">Top expense categories</div>
+    ${catRows}
+  </div>`;
+}
+
 // ── RENDER INSIGHTS ───────────────────────────────────
 function refreshInsights(){
   const txs=txForMonth();
@@ -1472,20 +1580,24 @@ function refreshInsights(){
   document.getElementById('ov-expense').textContent=expense>0?fmtShort(expense):'N/A';
   document.getElementById('ov-avail').textContent=fmtShort(income-expense);
 
+  // Expense list for this month (needed by both the Overview donut and the Expense tab)
+  const exps=sortedTxs.filter(t=>t.type==='expense');
+
   // Overview body
   const ovb=document.getElementById('ov-body');
   if(!txs.length){
     ovb.innerHTML=emptyState('No transaction found','Add your first transaction below','openExpenseForm()','+ Add Transaction');
   } else {
     const rows=sortedTxs.map(t=>txRow(t, false)).join('');
-    ovb.innerHTML=`<div class="card" style="margin-top:12px">
-      <div class="card-title">All Transactions</div>
-      ${rows}
-    </div>`;
+    ovb.innerHTML=`
+      ${expenseOverviewHTML(exps, expense)}
+      <div class="card" style="margin-top:12px">
+        <div class="card-title">All Transactions</div>
+        ${rows}
+      </div>`;
   }
 
   // Expense body
-  const exps=sortedTxs.filter(t=>t.type==='expense');
   const expb=document.getElementById('exp-body');
   if(!exps.length){
     expb.innerHTML=emptyState('No expense transaction found','Track where your money goes','openExpenseForm()','+ Add Expense');
