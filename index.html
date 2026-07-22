@@ -1,0 +1,2867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Moneyfinz</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1A56DB">
+<link rel="icon" href="icon.svg" id="favicon-link">
+<link rel="apple-touch-icon" href="icon.svg" id="apple-touch-icon-link">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+/* Stop long-press/tap-drag from selecting text, which is what was
+   triggering Chrome's "Tap to search" popup and the copy/selection
+   handles on ordinary UI text (labels, amounts, category names, etc). */
+*{
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+}
+/* Text still needs to be selectable/typeable inside real inputs and
+   textareas, so explicitly re-enable it there. */
+input, textarea{
+  -webkit-user-select:text;
+  -moz-user-select:text;
+  user-select:text;
+  -webkit-touch-callout:default;
+}
+
+:root{
+  --blue:#1A56DB;--blue-dark:#1241B8;--blue-light:#EBF2FF;--blue-mid:#DBEAFE;
+  --green:#16A34A;--green-light:#DCFCE7;--red:#DC2626;--red-light:#FEE2E2;
+  --orange:#F97316;--text:#111827;--text-sub:#374151;--text-muted:#6B7280;
+  --border:#E5E7EB;--bg:#F3F4F6;--white:#fff;--nav-h:64px;
+}
+
+html,body{height:100%;overflow:hidden;background:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased}
+
+/* ── SHELL ── */
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;position:relative}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.screen.active{display:flex}
+
+/* ── SCROLL AREA ── */
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:var(--bg)}
+.scroll::-webkit-scrollbar{display:none}
+
+/* ── TOP BAR ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px 12px;background:var(--white);
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.topbar h1{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-.3px}
+.topbar .icon-btn{
+  width:36px;height:36px;border-radius:10px;background:var(--blue-light);
+  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--blue);flex-shrink:0;
+}
+.topbar .back-btn{
+  width:36px;height:36px;border-radius:10px;background:var(--bg);
+  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--text);font-size:18px;flex-shrink:0;
+}
+
+/* ── TAB STRIP ── */
+.tab-strip{display:flex;background:var(--white);border-bottom:1px solid var(--border);flex-shrink:0}
+.tab-strip button{
+  flex:1;padding:13px 0;font-size:13.5px;font-weight:500;
+  color:var(--text-muted);background:none;border:none;
+  border-bottom:2.5px solid transparent;cursor:pointer;transition:all .18s;
+}
+.tab-strip button.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:700}
+
+/* ── MONTH SELECTOR ── */
+.month-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  margin:14px 16px 0;background:var(--white);border-radius:14px;
+  padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,.07);
+}
+.month-bar span{font-size:14.5px;font-weight:600;color:var(--text)}
+.month-bar button{
+  width:32px;height:32px;border-radius:8px;background:var(--blue-light);
+  border:none;cursor:pointer;color:var(--blue);font-size:17px;
+  display:flex;align-items:center;justify-content:center;font-weight:700;
+}
+
+/* ── SUMMARY CARD ── */
+.summary-row{
+  display:flex;gap:10px;margin:12px 16px;
+}
+.summary-chip{
+  flex:1;background:var(--white);border-radius:14px;padding:14px 10px;
+  text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07);
+}
+.summary-chip .s-label{font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+.summary-chip .s-val{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.s-val.green{color:var(--green)}.s-val.red{color:var(--red)}.s-val.blue{color:var(--blue)}
+
+/* ── CARD ── */
+.card{
+  margin:0 16px 12px;background:var(--white);border-radius:16px;
+  padding:18px 16px;box-shadow:0 1px 3px rgba(0,0,0,.07);
+}
+.card-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;letter-spacing:-.1px}
+
+/* ── EMPTY STATE ── */
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;
+  padding:36px 24px;gap:12px;
+}
+.empty-icon{
+  width:72px;height:72px;background:var(--blue-light);border-radius:20px;
+  display:flex;align-items:center;justify-content:center;margin-bottom:4px;position:relative;
+}
+.empty-icon svg{opacity:.7}
+.empty-badge{
+  position:absolute;bottom:-4px;right:-4px;width:24px;height:24px;
+  background:var(--orange);border-radius:50%;border:2px solid white;
+  display:flex;align-items:center;justify-content:center;font-size:12px;
+}
+.empty-state p{font-size:15px;font-weight:600;color:var(--text);text-align:center}
+.empty-state small{font-size:13px;color:var(--text-muted);text-align:center}
+
+/* ── BUTTONS ── */
+.btn-primary{
+  width:100%;padding:15px;background:var(--blue);color:white;
+  border:none;border-radius:14px;font-size:15px;font-weight:700;
+  cursor:pointer;transition:all .15s;letter-spacing:.1px;
+}
+.btn-primary:active{background:var(--blue-dark);transform:scale(.98)}
+.btn-primary:disabled{background:#93C5FD;cursor:not-allowed}
+.btn-outline{
+  width:100%;padding:14px;background:var(--blue-light);color:var(--blue);
+  border:none;border-radius:14px;font-size:15px;font-weight:700;
+  cursor:pointer;transition:all .15s;
+}
+.btn-outline:active{background:var(--blue-mid)}
+
+/* ── FAB ── */
+.fab{
+  position:absolute;right:18px;bottom:calc(var(--nav-h) + 14px);
+  width:54px;height:54px;background:var(--blue);border-radius:50%;
+  border:none;color:white;font-size:26px;font-weight:300;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(26,86,219,.45);cursor:pointer;
+  transition:transform .15s,box-shadow .15s;z-index:10;
+}
+.fab:active{transform:scale(.92);box-shadow:0 2px 8px rgba(26,86,219,.3)}
+
+/* ── PIE VISUAL ── */
+.pie-visual{display:flex;align-items:center;justify-content:center;margin:6px 0}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  display:flex;background:var(--white);border-top:1px solid var(--border);
+  height:var(--nav-h);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0);
+  position:relative;z-index:20;
+}
+.nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;border:none;background:none;cursor:pointer;position:relative;
+  padding:8px 0;
+}
+.nav-btn svg{width:22px;height:22px;stroke:var(--text-muted);fill:none;stroke-width:1.8;transition:stroke .15s}
+.nav-btn span{font-size:10.5px;color:var(--text-muted);font-weight:500;transition:color .15s}
+.nav-btn.active svg{stroke:var(--blue)}
+.nav-btn.active span{color:var(--blue);font-weight:700}
+.nav-dot{
+  position:absolute;top:7px;left:50%;transform:translateX(6px);
+  width:7px;height:7px;background:var(--orange);border-radius:50%;border:1.5px solid white;
+}
+
+/* ── HOME HERO ── */
+.home-hero{
+  background:linear-gradient(145deg,#1241B8 0%,#1A56DB 60%,#2563EB 100%);
+  padding:22px 20px 28px;
+}
+.hero-top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.hero-greeting{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:0;font-weight:500}
+.currency-pill{
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+  border-radius:99px;padding:6px 12px;font-size:12px;font-weight:700;
+  color:white;cursor:pointer;letter-spacing:.2px;flex-shrink:0;
+}
+.currency-pill:active{background:rgba(255,255,255,.25)}
+.balance-glass{
+  background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);
+  border-radius:18px;padding:18px 18px 16px;backdrop-filter:blur(10px);
+}
+.bal-label{font-size:11.5px;color:rgba(255,255,255,.65);font-weight:500;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px}
+.bal-amount{font-size:34px;font-weight:900;color:white;letter-spacing:-.5px;margin-bottom:16px}
+.bal-row{display:flex;gap:1px}
+.bal-col{flex:1;padding:0 4px}
+.bal-col:first-child{padding-left:0;border-right:1px solid rgba(255,255,255,.2);margin-right:12px}
+.bal-col-label{font-size:11px;color:rgba(255,255,255,.6);margin-bottom:3px;font-weight:500}
+.bal-col-val{font-size:16px;font-weight:700;color:white}
+
+/* ── HOME QUICK ACTIONS ── */
+.quick-actions{
+  display:flex;gap:10px;padding:16px 16px 12px;background:white;
+}
+.qa-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:14px 8px 12px;background:var(--blue-light);border-radius:16px;
+  border:none;cursor:pointer;transition:all .15s;
+}
+.qa-btn:active{transform:scale(.95);background:var(--blue-mid)}
+.qa-btn .qa-icon{
+  width:42px;height:42px;background:var(--blue);border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+}
+.qa-btn .qa-icon svg{stroke:white;fill:none;stroke-width:2;width:20px;height:20px}
+.qa-btn span{font-size:11.5px;font-weight:600;color:var(--blue)}
+
+/* ── TX LIST ── */
+.tx-item{
+  display:flex;align-items:center;gap:12px;padding:13px 16px;
+  border-bottom:1px solid var(--border);background:white;
+}
+.tx-icon{
+  width:44px;height:44px;border-radius:14px;background:var(--blue-light);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;
+}
+.tx-info{flex:1;min-width:0}
+.tx-name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-date{font-size:11.5px;color:var(--text-muted);margin-top:2px}
+.tx-amount{font-size:15px;font-weight:800;letter-spacing:-.2px;flex-shrink:0}
+.tx-amount.income{color:var(--green)}.tx-amount.expense{color:var(--red)}
+
+/* ── INCOME OVERVIEW ── */
+.total-block{margin-bottom:16px}
+.total-lbl{font-size:12px;color:var(--text-muted);font-weight:500;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.total-val{font-size:30px;font-weight:900;color:var(--text);letter-spacing:-.5px}
+.info-strip{
+  display:flex;align-items:center;gap:10px;padding:11px 14px;
+  background:var(--green-light);border-radius:12px;margin-bottom:16px;
+}
+.info-strip span{font-size:13px;color:#166534;font-weight:500}
+.list-lbl{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px}
+.list-item{
+  display:flex;align-items:center;gap:12px;padding:11px 0;
+  border-top:1px solid var(--border);
+}
+.li-icon{
+  width:44px;height:44px;border-radius:14px;background:var(--blue-light);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;
+}
+.li-name{flex:1;font-size:14.5px;font-weight:600;color:var(--text)}
+.li-amount{font-size:14.5px;font-weight:700;color:var(--text)}
+.li-menu{display:flex;flex-direction:column;gap:3px;padding:4px;cursor:pointer}
+.li-menu i{width:4px;height:4px;background:var(--text-muted);border-radius:50%;display:block}
+
+/* ── CURRENCY LIST ── */
+.currency-item{
+  display:flex;align-items:center;gap:12px;padding:12px 10px;
+  border-radius:12px;cursor:pointer;
+}
+.currency-item:active{background:var(--bg)}
+.currency-item.selected{background:var(--blue-light)}
+.currency-symbol{
+  width:38px;height:38px;border-radius:10px;background:var(--blue-light);
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+  font-weight:700;color:var(--blue);flex-shrink:0;
+}
+.currency-info{flex:1;min-width:0}
+.currency-name{font-size:14px;font-weight:600;color:var(--text)}
+.currency-code{font-size:12px;color:var(--text-muted)}
+.currency-check{color:var(--blue);font-size:16px;font-weight:700;flex-shrink:0}
+
+/* ── BUDGET BAR ── */
+.budget-item{padding:14px 0;border-top:1px solid var(--border)}
+.budget-item:first-child{border-top:none;padding-top:0}
+.budget-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.budget-cat{display:flex;align-items:center;gap:10px}
+.budget-cat-icon{width:36px;height:36px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px}
+.budget-cat-name{font-size:14px;font-weight:600;color:var(--text)}
+.budget-meta{text-align:right}
+.budget-spent{font-size:13px;font-weight:700;color:var(--text)}
+.budget-total{font-size:11px;color:var(--text-muted)}
+.budget-bar-track{height:7px;background:var(--border);border-radius:99px;overflow:hidden}
+.budget-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--blue),#60A5FA);transition:width .4s ease}
+.budget-bar-fill.over{background:linear-gradient(90deg,var(--red),#F87171)}
+
+/* ── EXPENSE OVERVIEW (donut) ── */
+.card-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title-row .card-title{margin-bottom:0}
+.card-chevron-btn{
+  width:30px;height:30px;border-radius:50%;background:var(--bg);border:none;
+  display:flex;align-items:center;justify-content:center;color:var(--text-muted);
+  cursor:pointer;flex-shrink:0;
+}
+.card-chevron-btn:active{background:var(--border)}
+.expov-wrap{display:flex;align-items:center;justify-content:center;gap:26px;flex-wrap:wrap;padding:4px 0 2px}
+.expov-legend{display:flex;flex-direction:column;gap:11px}
+.expov-legend-item{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text-sub);font-weight:500}
+.expov-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+.cat-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--border);cursor:pointer}
+.cat-row:first-child{border-top:none;padding-top:0}
+.cat-row-icon{
+  width:44px;height:44px;border-radius:50%;background:var(--blue-light);
+  display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;
+}
+.cat-row-info{flex:1;min-width:0}
+.cat-row-name{font-size:15px;font-weight:700;color:var(--text)}
+.cat-row-sub{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.cat-row-amount{font-size:14.5px;font-weight:700;color:var(--red);white-space:nowrap}
+.cat-row-chevron{color:var(--text-muted);flex-shrink:0;margin-left:2px}
+
+/* ── FORM SCREEN ── */
+.form-screen{
+  display:none;flex-direction:column;position:fixed;inset:0;
+  background:var(--bg);z-index:60;
+}
+.form-screen.open{display:flex}
+.form-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+.form-body::-webkit-scrollbar{display:none}
+
+.form-group{display:flex;flex-direction:column;gap:7px}
+.form-group label{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.form-input{
+  padding:14px 16px;border:1.5px solid var(--border);
+  border-radius:14px;font-size:16px;color:var(--text);
+  background:var(--white);outline:none;width:100%;
+  appearance:none;-webkit-appearance:none;transition:border .2s,box-shadow .2s;
+  font-family:inherit;
+}
+.form-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.1)}
+.form-input::placeholder{color:#CBD5E1}
+.select-wrap{position:relative}
+.select-wrap::after{
+  content:'›';position:absolute;right:15px;top:50%;transform:translateY(-50%) rotate(90deg);
+  font-size:20px;color:var(--text-muted);pointer-events:none;line-height:1;
+}
+.form-input[readonly]{cursor:pointer;background:var(--white)}
+.form-footer{padding:14px 16px calc(14px + env(safe-area-inset-bottom,0));background:var(--white);border-top:1px solid var(--border);flex-shrink:0}
+
+/* ── SEGMENTED CONTROL ── */
+.seg-control{display:flex;background:var(--bg);border-radius:13px;padding:4px;gap:4px}
+.seg-btn{flex:1;padding:11px 0;text-align:center;font-size:13.5px;font-weight:600;
+  color:var(--text-muted);background:none;border:none;border-radius:10px;
+  cursor:pointer;transition:all .15s;font-family:inherit}
+.seg-btn.active{background:var(--white);color:var(--blue);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+/* ── DAY / MONTH / YEAR ROW ── */
+.dmy-row{display:flex;gap:8px}
+.dmy-wrap{flex:1;position:relative}
+.dmy-wrap::after{
+  content:'›';position:absolute;right:8px;top:50%;transform:translateY(-50%) rotate(90deg);
+  font-size:16px;color:var(--text-muted);pointer-events:none;line-height:1;
+}
+.dmy-select{
+  width:100%;padding:12px 20px 12px 10px;border:1.5px solid var(--border);
+  border-radius:12px;font-size:14px;font-weight:600;color:var(--text);
+  background:var(--white);outline:none;appearance:none;-webkit-appearance:none;
+  font-family:inherit;transition:border .2s,box-shadow .2s;
+}
+.dmy-select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.1)}
+
+/* ── CATEGORY MODAL ── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:80;
+  align-items:flex-end;
+}
+.modal-overlay.open{display:flex}
+.modal-sheet{
+  width:100%;background:var(--white);border-radius:24px 24px 0 0;
+  max-height:80dvh;display:flex;flex-direction:column;
+  animation:slideUp .22s cubic-bezier(.22,1,.36,1);
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:99px;margin:12px auto 0}
+.modal-header{
+  display:flex;align-items:center;justify-content:center;
+  padding:14px 20px 14px;border-bottom:1px solid var(--border);position:relative;
+}
+.modal-header h2{font-size:16px;font-weight:700;color:var(--text)}
+.modal-close{
+  position:absolute;right:16px;width:32px;height:32px;border-radius:8px;
+  background:var(--bg);border:none;cursor:pointer;font-size:17px;color:var(--text-muted);
+  display:flex;align-items:center;justify-content:center;
+}
+.cat-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:16px 10px;padding:20px 16px 28px;overflow-y:auto;
+}
+.cat-grid::-webkit-scrollbar{display:none}
+.cat-cell{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
+.cat-cell:active .cat-circle{transform:scale(.92)}
+.cat-circle{
+  width:62px;height:62px;border-radius:18px;background:var(--blue-light);
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  transition:transform .12s;border:2px solid transparent;
+}
+.cat-circle.primary{background:var(--white);border:2px dashed var(--border);color:var(--text)}
+.cat-circle.selected{border-color:var(--blue);background:var(--blue-mid)}
+.cat-cell span{font-size:12px;color:var(--text-sub);font-weight:500;text-align:center;line-height:1.3}
+
+/* ── HISTORY ── */
+.history-date-header{
+  font-size:12px;font-weight:700;color:var(--text-muted);
+  padding:10px 16px 6px;text-transform:uppercase;letter-spacing:.5px;
+  background:var(--bg);
+}
+.history-empty{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;padding:60px 24px;
+}
+.history-empty p{font-size:15px;font-weight:600;color:var(--text-muted)}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:calc(var(--nav-h) + 16px);left:50%;
+  transform:translateX(-50%) translateY(10px);
+  background:#111827;color:white;padding:11px 22px;border-radius:30px;
+  font-size:13.5px;font-weight:600;opacity:0;transition:all .25s;z-index:200;
+  white-space:nowrap;pointer-events:none;letter-spacing:.1px;
+}
+.toast.show{
+  opacity:1;transform:translateX(-50%) translateY(0);
+}
+
+/* ── SECTION SPACER ── */
+.spacer{height:12px;background:transparent}
+.section-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px 8px;
+}
+.section-hdr h3{font-size:15px;font-weight:700;color:var(--text)}
+.section-hdr a{font-size:12.5px;color:var(--blue);font-weight:600;text-decoration:none;cursor:pointer}
+
+/* ── AUTH / PAYWALL / LOADING ── */
+#screen-boot{display:flex;align-items:center;justify-content:center;height:100vh;height:100dvh;background:var(--white)}
+.boot-spinner{width:38px;height:38px;border-radius:50%;border:3px solid var(--blue-mid);border-top-color:var(--blue);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.auth-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:32px 24px;background:var(--white);overflow-y:auto}
+.auth-logo{width:56px;height:56px;border-radius:16px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:800;margin:0 auto 18px;overflow:hidden;position:relative}
+.auth-title{font-size:22px;font-weight:800;color:var(--text);text-align:center;margin-bottom:4px}
+.auth-sub{font-size:13.5px;color:var(--text-muted);text-align:center;margin-bottom:28px}
+.auth-error{background:var(--red-light);color:var(--red);font-size:12.5px;font-weight:600;padding:10px 12px;border-radius:10px;margin-bottom:14px;display:none}
+.auth-error.show{display:block}
+.auth-switch{text-align:center;margin-top:18px;font-size:13px;color:var(--text-muted)}
+.auth-switch a{color:var(--blue);font-weight:700;cursor:pointer;text-decoration:none}
+
+.pay-wrap{flex:1;display:flex;flex-direction:column;overflow-y:auto;background:var(--bg)}
+.pay-hero{background:var(--blue);color:#fff;padding:28px 24px 22px;text-align:center}
+.pay-hero h2{font-size:19px;font-weight:800;margin-bottom:4px}
+.pay-hero p{font-size:13px;opacity:.85}
+.pay-price{font-size:34px;font-weight:800;margin:10px 0 2px}
+.pay-price span{font-size:14px;font-weight:600;opacity:.8}
+.pay-card{background:var(--white);border-radius:16px;margin:16px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.pay-qr-box{width:100%;max-width:220px;aspect-ratio:1;margin:0 auto 14px;border-radius:14px;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;padding:10px}
+.pay-qr-box img{width:100%;height:100%;object-fit:contain;border-radius:6px}
+.pay-steps{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.pay-step{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-sub);line-height:1.5}
+.pay-step-num{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:var(--blue-light);color:var(--blue);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.pay-pending{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:8px 4px 4px}
+.pay-status-badge{display:inline-flex;align-items:center;gap:6px;background:#FFF7ED;color:var(--orange);font-size:12.5px;font-weight:700;padding:7px 14px;border-radius:20px}
+.logout-link{text-align:center;padding:4px 0 20px;font-size:12.5px;color:var(--text-muted);text-decoration:underline;cursor:pointer}
+.icon-btn.small{
+  width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0
+}
+</style>
+
+<!-- ══════════ FIREBASE ══════════ -->
+<script type="module">
+(async () => {
+  try {
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const {
+      getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+      onAuthStateChanged, signOut, sendPasswordResetEmail
+    } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+    const {
+      getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+      doc, setDoc, getDoc, getDocFromServer, onSnapshot, addDoc, collection, serverTimestamp
+    } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC4Z2ZUwdaWYQWxDvrBkYWcjbppRokq4Y0",
+      authDomain: "moneyfinz.firebaseapp.com",
+      projectId: "moneyfinz",
+      storageBucket: "moneyfinz.firebasestorage.app",
+      messagingSenderId: "918398350903",
+      appId: "1:918398350903:web:2a7a9629ed68994f9271b2",
+      measurementId: "G-LDDEQR4PDG"
+    };
+
+    const fbApp = initializeApp(firebaseConfig);
+    const auth = getAuth(fbApp);
+    // Turn on Firestore's built-in offline persistence: reads/writes made
+    // while the device has no connection are cached in IndexedDB and the
+    // SDK automatically replays/syncs them the moment connectivity comes
+    // back — no manual retry queue needed. Falls back to the normal
+    // in-memory Firestore if persistence can't start (e.g. very old
+    // browsers, or storage disabled), so the app still works either way.
+    let db;
+    try {
+      db = initializeFirestore(fbApp, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      });
+    } catch (e) {
+      console.log('Offline persistence unavailable, falling back to default cache:', e);
+      db = getFirestore(fbApp);
+    }
+
+    let unsubUserDoc = null;
+
+    window.fbSignUp = async (email, password) => {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        email,
+        subscribed: false,
+        expiryDate: null,
+        pendingRequest: false,
+        createdAt: serverTimestamp()
+      });
+    };
+
+    window.fbSignIn = (email, password) => signInWithEmailAndPassword(auth, email, password);
+
+    window.fbSendPasswordReset = (email) => sendPasswordResetEmail(auth, email);
+
+    window.fbLogout = () => signOut(auth);
+
+    window.fbSubmitPayment = async (trxId) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not logged in');
+      await addDoc(collection(db, 'paymentRequests'), {
+        uid: user.uid,
+        email: user.email,
+        trxId,
+        amount: 20,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+      await setDoc(doc(db, 'users', user.uid), {
+        pendingRequest: true,
+        lastTrxId: trxId
+      }, { merge: true });
+    };
+
+    // Pushes the local transactions/budgets/currency up to the signed-in
+    // user's Firestore document, so the same data shows up on every device
+    // that logs into this account (previously these lived in localStorage
+    // only, which never leaves the device it was entered on).
+    window.fbSaveFinanceData = async (payload) => {
+      const user = auth.currentUser;
+      if (!user) return;
+      await setDoc(doc(db, 'users', user.uid), payload, { merge: true });
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      if (unsubUserDoc) { unsubUserDoc(); unsubUserDoc = null; }
+
+      if (user) {
+        window.currentUser = user;
+
+        // Fresh install / freshly-cleared browser storage means this
+        // device's local Firestore cache is empty, so the very first
+        // onSnapshot event below can arrive as an empty "nothing cached
+        // yet" placeholder before the listener's own server round-trip
+        // catches up — which is exactly what was showing the paywall for
+        // (what felt like) a stuck moment even though the subscription
+        // was still active on the server. Firing one explicit,
+        // cache-bypassing server read right away, in parallel with
+        // setting up the live listener below, gives the app a
+        // guaranteed-fresh answer as fast as the network allows instead
+        // of waiting on the listener to sort out cache vs. server itself.
+        getDocFromServer(doc(db, 'users', user.uid)).then((snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.expiryDate && data.expiryDate.toDate) data.expiryDate = data.expiryDate.toDate();
+            data.__fromCache = false;
+            window.onUserDataChange && window.onUserDataChange(data);
+          }
+        }).catch((e) => {
+          // No network yet, or some other transient hiccup — not fatal,
+          // the live onSnapshot listener below will still catch up once
+          // it can reach the server.
+          console.log('Initial server-fresh read failed, waiting on live listener:', e);
+        });
+
+        unsubUserDoc = onSnapshot(doc(db, 'users', user.uid), async (snap) => {
+          if (!snap.exists()) {
+            if (snap.metadata.fromCache) {
+              // This device has no local cache of this document yet (e.g.
+              // right after a fresh install/reinstall, or Chrome's "Clear
+              // data"). That does NOT mean the account has no data on the
+              // server — it only means we haven't heard back from the
+              // server yet. Treat this exactly like being offline: use the
+              // app's own local/last-known-good fallback and wait for the
+              // next snapshot (the real server answer) instead of assuming
+              // the account is new. Critically, we must NOT write anything
+              // here — doing so on a false reading is what used to wipe a
+              // real account's transactions and subscription status the
+              // moment someone reinstalled the app.
+              window.onUserDataChange && window.onUserDataChange({ __fromCache: true });
+              return;
+            }
+            // This is a confirmed answer straight from the server: the
+            // document genuinely does not exist (e.g. signup happened
+            // before Firestore rules were set up). Recreate it with safe
+            // defaults. merge:true is a deliberate extra safety net — even
+            // in this authoritative branch, it guarantees this write can
+            // only ever add/reset these four fields and can never delete
+            // or overwrite anything else that might exist on the document.
+            try {
+              await setDoc(doc(db, 'users', user.uid), {
+                email: user.email,
+                subscribed: false,
+                expiryDate: null,
+                pendingRequest: false,
+                createdAt: serverTimestamp()
+              }, { merge: true });
+            } catch (e) {
+              console.error('Could not create user doc:', e);
+              window.onBootError && window.onBootError('Could not set up your account: ' + e.message);
+            }
+            return;
+          }
+          const data = snap.data();
+          if (data.expiryDate && data.expiryDate.toDate) data.expiryDate = data.expiryDate.toDate();
+          // Tell the app whether this reading came straight from the server
+          // (authoritative — always trust it, even if it says "not
+          // subscribed") or from Firestore's local on-device cache
+          // (possibly stale — safe to fall back to our own last-known-good
+          // subscription record while we wait for the real server answer).
+          data.__fromCache = snap.metadata.fromCache;
+          window.onUserDataChange && window.onUserDataChange(data);
+        }, (err) => {
+          console.error('Firestore listen error:', err);
+          window.onBootError && window.onBootError(
+            "Couldn't load your account data (Firestore). This usually means Firestore Database or its security rules " +
+            "haven't been set up yet in the Firebase console. Error: " + err.message
+          );
+        });
+      } else {
+        window.currentUser = null;
+        window.onAuthLoggedOut && window.onAuthLoggedOut();
+      }
+    }, (err) => {
+      console.error('Auth state error:', err);
+      window.onBootError && window.onBootError('Authentication error: ' + err.message);
+    });
+
+  } catch (err) {
+    console.error('Firebase init failed:', err);
+    let msg = 'Could not connect to the server. Please check your internet connection and try again.';
+    if (location.protocol === 'file:') {
+      msg = "This app can't run when opened directly by double-clicking the file. Please open it through a web server " +
+            "(Firebase Hosting, GitHub Pages, or a local server) instead.";
+    }
+    window.onBootError ? window.onBootError(msg) : alert(msg);
+  }
+})();
+</script>
+</head>
+<body>
+
+<!-- ══════════ BOOT LOADER ══════════ -->
+<div id="screen-boot">
+  <div id="boot-loading" style="display:flex;flex-direction:column;align-items:center;gap:14px">
+    <div class="boot-spinner"></div>
+  </div>
+  <div id="boot-error" style="display:none;flex-direction:column;align-items:center;max-width:320px;padding:24px;text-align:center">
+    <div style="font-size:32px;margin-bottom:10px">⚠️</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px">App couldn't start</div>
+    <div id="boot-error-msg" style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:16px"></div>
+    <button class="btn-primary" onclick="location.reload()" style="width:100%">Try Again</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+
+<!-- ══════════ AUTH (LOGIN / SIGN UP) ══════════ -->
+<div class="screen" id="screen-auth">
+  <div class="auth-wrap">
+    <div class="auth-logo" id="auth-logo">
+      <img id="auth-logo-img" alt="Moneyfinz" data-tried-png="0" style="width:100%;height:100%;object-fit:cover;border-radius:16px;display:none" onload="this.style.display='block';document.getElementById('auth-logo-fallback').style.display='none'" onerror="if(this.dataset.triedPng==='0'){this.dataset.triedPng='1';this.src='app-logo.png?v='+new Date().toISOString().slice(0,10);}else{this.style.display='none';}">
+      <span id="auth-logo-fallback">M</span>
+    </div>
+    <h1 class="auth-title" id="auth-title">Welcome back</h1>
+    <p class="auth-sub" id="auth-sub">Log in to continue to Moneyfinz</p>
+    <div class="auth-error" id="auth-error"></div>
+    <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Email</label>
+        <input class="form-input" id="auth-email" type="email" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="form-group" style="margin-bottom:18px">
+        <label>Password</label>
+        <input class="form-input" id="auth-password" type="password" placeholder="••••••••" required minlength="6" autocomplete="current-password">
+        <div id="forgot-password-link" style="text-align:right;margin-top:8px">
+          <a onclick="openForgotPassword()" style="color:var(--blue);font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:none">Forgot password?</a>
+        </div>
+      </div>
+      <button class="btn-primary" type="submit" id="auth-submit-btn" style="width:100%">Log In</button>
+    </form>
+    <div class="auth-switch" id="auth-switch">
+      Don't have an account? <a onclick="toggleAuthMode()">Sign up</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ FORGOT PASSWORD MODAL ══════════ -->
+<div class="modal-overlay" id="forgot-password-modal" onclick="closeForgotPasswordBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Reset Password</h2>
+      <button class="modal-close" onclick="closeForgotPassword()">✕</button>
+    </div>
+    <div style="padding:6px 16px 28px">
+      <div id="forgot-password-form-block">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Enter your account email and we'll send you a link to reset your password.</p>
+        <div class="auth-error" id="forgot-password-error"></div>
+        <div class="form-group" style="margin-bottom:18px">
+          <label>Email</label>
+          <input class="form-input" id="forgot-password-email" type="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <button class="btn-primary" style="width:100%" id="forgot-password-submit-btn" onclick="handleForgotPasswordSubmit()">Send Reset Link</button>
+      </div>
+      <div id="forgot-password-success-block" style="display:none;text-align:center;padding:8px 0">
+        <p style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px">Check your email</p>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">We've sent a password reset link to <span id="forgot-password-sent-email" style="font-weight:600;color:var(--text)"></span>.</p>
+        <button class="btn-outline" style="width:100%" onclick="closeForgotPassword()">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SUBSCRIPTION / PAYWALL ══════════ -->
+<div class="screen" id="screen-paywall">
+  <div class="pay-wrap">
+    <div class="pay-hero" style="position:relative;padding-top:52px">
+      <button class="icon-btn small" style="position:absolute;top:10px;right:14px;background:rgba(255,255,255,.2);color:#fff" onclick="openAccountMenu()" title="Account">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+      </button>
+      <h2>Subscribe to Moneyfinz</h2>
+      <p>Unlock the full app with a monthly subscription</p>
+      <div class="pay-price">৳20 <span>/ month</span></div>
+    </div>
+
+    <!-- shown when user has not yet submitted a payment request -->
+    <div id="pay-form-block">
+      <div class="pay-card">
+        <div class="pay-qr-box" id="pay-qr-box">
+          <img id="pay-qr-img" src="payment-qr.png" alt="Payment QR code" onerror="this.onerror=null;this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAcIAAAHCAgMAAAABdiHWAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAxQTFRF////xRYd1yAnFnE9M/nOmAAACG5JREFUeJztmUGLFUcUhe8wM+JC0FWWIWQlLvILEmbAZQLjwg5ZDRIIZJeduBAzjhvxV4hkZUFQyFYygj/AlbiS/AFhBkIYdIx509X31LnVY4hdk46aUwyP19237nffs859p8olm3ssiSiiiCKKKKKI7wpx9QKu0+qFxZ+9vLe4mfDo5b0uP813Fpf4y0/7v8XbfJlnJXo1TBdRxDZiyreA87k5T+HmRzlnvsxp/WbqU3VDcquTiyhiO9FXcvKAMotr6McQQERjpWRF5DdVchFFPEYiUUrCDHLtQB3c51FtFwOSiCL+e0TSSHnqAkkkk3zT2Gxwe3eciCIeJ5GTj4INdhfuwqJVhhN2l5Kq1/JGRBGbiOaDWcf1V5KLKGIjkQfC2OvGnZq59bWoi+r8oegoDBFFbCOOGzidOSTa3BUE0H4zeTAb41wM8ogoYhPRcawIIz88mA0eq3Tea3TkSyKCgqLlFlHEJiJw5gveyPFySw/9md6YH4shgI8gypmbiCK2EMknFHWwRugOXw5pHdRRtSEJN3kRRWwhjtxC8pXfuWTMwnnvODM8hqugSCbeF1HEZiK3336U92j19Ch4CTwlb5xoopUhoogNxJyE/K1VYZQBmY32aOxG2JYcZVFEFLGBWDkE37t17kMKxUeREm5FH2IuK1gXq1yHiCJOIpb2S72381QdUeAlEvKwZIBmU80aEVHEFmI/isGAOkAMU3zAilRhXnxxKcF7iChiG5FsbQdzCysSbwYVcOt2LQSbzWgRRWwkek7jbkyuoxSDS/IbcCDGb7hOLzKJKGI7Ee03J3FdVKsdxFoypJqEUmFX/EOZiCI2E9FskbAYXUobTG8lhMpjZJZXgiJFFLGJCOfAusjDezvkYO4xuorrEiCDEU4w/J6IIjYRS4xTaD0boKWxRyti7kMQX/uQMkQUsYlYZxgt8s6FY6SFsqGLgqpbupckooitRLIT7JaLnUAqMsDDRH9kkAnGKGcSUcR2Yj/Qqw2rOg+UUT0igZRLGqXJV65DRBGnEodu7MkNhhl2AlWhQjpbQJ3o6sF+eB4RRWwlAoRHHmkczIX1A7ggH7gUFH+UzxHxvyXWo/odn4G4dHEikRIODplOIdKRLJ7I7Zro4Y6XKKKIrUTfrA1bNtxhqxxNhXGFbDCo7Xc4T1sNJ7pvRbz75NyTc1/ffXbl3OVL8xC37mx+url97eT+Jyefzka88+zW5ZP7t7/fn+lb3X+2IN7evDIbcevOzf3NW5dvXrn75zcTibGHoxsPj8gVd/2z/lvdvnZz+IzDcAl01aYPvmWIm0Lsv9Xts0/P/jEX8eghYhvxte2dObxe23m1Mp1IS5p9QjEM1I0DceE6qOfn6XVCTzuZeIBPdiDi8RHP79jeV8uLl1PvD9H7cHL6eIWz8Tg4/3D54OGPD5efn1opc9lIFzXF/xF+n4j26GBvwx7NRrS1BcwOiWfswyUu/gltY/EymYhmi+A8vKWXiW8mQhTB0/Iur3Idb0lcvCy/mpP44HCNru3szUj8bOvS7e925yT+9O2JF9evzkdcGMjtE/s3vli3ZqK/LyAyEuxxbvzw0YvrPbE/eeBNH4TGihuONSYTD7/Vk7ef/Hr/zJzEE/tbsxJ/ts0XSw/m+1bt1MdbT7aW5ySe/v3Bb5daiOaHtP1A0y66KC39y576+tGr9bWd3rYuXUxUntFrEFrlkKcQN3ZtRuLazqNXV5fzb8dMxMe/zE68v/75cvYAcxGfr5zeXW8idr6bgxA6jqb7VhHjrq2k8iRlkxjVMYW4tDwb8WDl9cONvTVyyB8g8fzjXdvbyDud94UIO4FImhsW/5jYq8Mqj+3u2pC2/ApMIsY98gdJrE5XRPwbYucHCFYtbw/t8i2LY0H04Npps2qOUoeIIr410cr/OyQSRVnV5ENsNMrRRBRXmUVlTyfSxlDE/zPRYDl8Oq/tUE90IHV5FTonJ08iooiNROQJWzAU4DHmXdTQ9j2APTZyGhXTiShiO5EkUGdjltE6r7w0tW7WFz7L2OeIKOI0InZheSAeNxMqQcMHIjpq4wAiuvEQUcQ2ok8pfRuX0YEYN20j74FyUTlVNbgREUVsJHpkQpemJsyLf0g4orDliFrwABeLiCIeA5HcxdC3o2rgMcy1A8tRjiwsnujGX4RaHSKK+LbEyjPkpEzxvl18r0cmJwbb7OgEW1I+logithFpnWOwHy5JWEQ+t0AdNKDpUyQRRTwWIvXtFKcUaXA2D0PHri/pDdljEUVsI5KLKNOx8pGcNnqp2u6hBjctMNu1mkQUsY3IGqmNBzJT904UbEgeG3ipcNzJRRRxGhEUvLIoPMDIGFfFAFS1dFRePImIIrYQqf2WFk2VQBdo9aM8luNhNspPwBv0KKKI04gD13WBpV4S4n3u4WYQQqbX9zHLqzrCdYgo4gRiNLdIVZY3isE6h5RYPvAtFHy0OkQUcRIRkayCUfBw06gqzEq8a+Ob5v+XIaKI7cTYk0uMR8Jd8DaNzxMGIcT4YD9Qs4giNhJxIy74YIZzWnhgtH2nm/fwoiza35mR6xBRxAYiGwajGPgNVMX0yg/nN5zBOFhEERuJPKL3YCFgVueswwscTcBFe4dniSWYGRFFbCHSMi4BcBdImCNgPFgXLi6WSWjjA05EEVuJ41ZcWjdWuNeW4poPPwGR2FUfQUQR24nR8aKfJ5oLnxzsBHZ5cBojY2woXkQRj5tYzAPtzgwmpPIVNKvEQBeZM3IdIorYThwe8fKmO8MapwZeRBRUUM5yQ5MXUcRGYr7CIucCfCTSCDsKI9fRRRMSOvybfY6IIv5zYkmLFo3kbJWpb5vVx2VmZpGS+CPETi6iiFOIsw4RRRRRRBFFFPFdIP4FH7uxOXLkdbUAAAAASUVORK5CYII=';">
+        </div>
+        <p style="text-align:center;font-size:11.5px;color:var(--text-muted);margin:-6px 0 14px">Scan with bKash, Nagad, Rocket, or any bank app</p>
+        <div class="pay-steps">
+          <div class="pay-step"><div class="pay-step-num">1</div><div>Scan the QR code above from your MFS or banking app.</div></div>
+          <div class="pay-step"><div class="pay-step-num">2</div><div>Send exactly ৳20.</div></div>
+          <div class="pay-step"><div class="pay-step-num">3</div><div>Enter the phone number or bank account number the payment was sent from.</div></div>
+        </div>
+      </div>
+      <div class="pay-card">
+        <div class="auth-error" id="pay-error"></div>
+        <div class="seg-control" style="margin-bottom:14px">
+          <button class="seg-btn active" id="pay-method-mfs-btn" onclick="setPaymentMethod('mfs')">MFS</button>
+          <button class="seg-btn" id="pay-method-bank-btn" onclick="setPaymentMethod('bank')">Banking</button>
+        </div>
+
+        <div id="pay-method-mfs">
+          <div class="form-group">
+            <label>bKash/Nagad/Rocket Number</label>
+            <input class="form-input" id="pay-mfs-phone" type="text" inputmode="numeric" placeholder="e.g. 01712345678">
+          </div>
+        </div>
+
+        <div id="pay-method-bank" style="display:none">
+          <div class="form-group">
+            <label>Bank Account Number — Last 4 Digits</label>
+            <input class="form-input" id="pay-bank-account" type="text" inputmode="numeric" maxlength="4" placeholder="e.g. 1234">
+          </div>
+          <div class="form-group" style="margin-top:10px">
+            <label>Card Number — Last 4 Digits</label>
+            <input class="form-input" id="pay-bank-card" type="text" inputmode="numeric" maxlength="4" placeholder="e.g. 5678">
+          </div>
+        </div>
+
+        <button class="btn-primary" style="width:100%;margin-top:14px" onclick="submitPaymentRequest()" id="pay-submit-btn">Submit for Approval</button>
+      </div>
+    </div>
+
+    <!-- shown after a payment request has been submitted and is awaiting manual approval -->
+    <div id="pay-pending-block" style="display:none">
+      <div class="pay-card pay-pending">
+        <span class="pay-status-badge">⏳ Pending Approval</span>
+        <p style="font-size:13.5px;color:var(--text-sub);line-height:1.6">
+          We've received your payment details. This is checked manually, so it may take a little while.
+          The app will unlock automatically as soon as it's approved — no need to reload.
+        </p>
+        <p style="font-size:12px;color:var(--text-muted)">Submitted Number: <strong id="pay-pending-trxid">-</strong></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ HOME ══════════ -->
+<div class="screen" id="screen-home">
+  <div class="scroll">
+    <!-- Hero -->
+    <div class="home-hero">
+      <div class="hero-top-row">
+        <p class="hero-greeting" id="hero-greeting">Good morning 👋</p>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="currency-pill" id="currency-pill-btn" onclick="openCurrencyModal()">$ USD ▾</button>
+          <button class="icon-btn small" style="background:rgba(255,255,255,.2);color:#fff" onclick="openAccountMenu()" title="Account">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="balance-glass">
+        <div class="bal-label">Total Balance</div>
+        <div class="bal-amount" id="home-balance">0.00</div>
+        <div class="bal-row">
+          <div class="bal-col">
+            <div class="bal-col-label">Income</div>
+            <div class="bal-col-val" id="home-income">0</div>
+          </div>
+          <div class="bal-col">
+            <div class="bal-col-label">Expense</div>
+            <div class="bal-col-val" id="home-expense">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <button class="qa-btn" onclick="openExpenseForm()">
+        <div class="qa-icon">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+        <span>Expense</span>
+      </button>
+      <button class="qa-btn" onclick="openIncomeForm()">
+        <div class="qa-icon">
+          <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
+        <span>Income</span>
+      </button>
+      <button class="qa-btn" onclick="openBudgetForm()">
+        <div class="qa-icon">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <span>Budget</span>
+      </button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <!-- Recent Transactions -->
+    <div style="background:white;border-radius:16px 16px 0 0;min-height:200px">
+      <div class="section-hdr">
+        <h3>Recent Transactions</h3>
+        <a onclick="switchTab('history')">See all</a>
+      </div>
+      <div id="home-tx-list"></div>
+    </div>
+    <div style="height:80px"></div>
+  </div>
+</div>
+
+<!-- ══════════ INSIGHTS ══════════ -->
+<div class="screen" id="screen-insights">
+  <div class="topbar">
+    <div style="width:36px"></div>
+    <h1>Insights</h1>
+    <button class="icon-btn" onclick="openStatementModal()" title="Download Statement">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="tab-strip" id="insights-tabs">
+    <button class="active" onclick="switchInsightTab('overview',this)">Overview</button>
+    <button onclick="switchInsightTab('expense',this)">Expense</button>
+    <button onclick="switchInsightTab('budget',this)">Budget</button>
+    <button onclick="switchInsightTab('income',this)">Income</button>
+  </div>
+
+  <div class="scroll" id="insights-scroll">
+
+    <!-- OVERVIEW -->
+    <div id="tab-overview">
+      <div class="month-bar" style="margin-top:14px">
+        <button onclick="changeMonth(-1)">‹</button>
+        <span id="month-label">June 2026</span>
+        <button onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="summary-row" style="margin-top:12px">
+        <div class="summary-chip">
+          <div class="s-label">Income</div>
+          <div class="s-val green" id="ov-income">0</div>
+        </div>
+        <div class="summary-chip">
+          <div class="s-label">Expense</div>
+          <div class="s-val red" id="ov-expense">N/A</div>
+        </div>
+        <div class="summary-chip">
+          <div class="s-label">Available</div>
+          <div class="s-val blue" id="ov-avail">0</div>
+        </div>
+      </div>
+      <div id="ov-body"></div>
+      <div style="height:80px"></div>
+    </div>
+
+    <!-- EXPENSE -->
+    <div id="tab-expense" style="display:none">
+      <div class="month-bar" style="margin-top:14px">
+        <button onclick="changeMonth(-1)">‹</button>
+        <span id="month-label-exp">June 2026</span>
+        <button onclick="changeMonth(1)">›</button>
+      </div>
+      <div id="exp-body"></div>
+      <div style="height:80px"></div>
+    </div>
+
+    <!-- BUDGET -->
+    <div id="tab-budget" style="display:none">
+      <div class="month-bar" style="margin-top:14px">
+        <button onclick="changeMonth(-1)">‹</button>
+        <span id="month-label-bud">June 2026</span>
+        <button onclick="changeMonth(1)">›</button>
+      </div>
+      <div id="bud-body"></div>
+      <div style="height:80px"></div>
+    </div>
+
+    <!-- INCOME -->
+    <div id="tab-income" style="display:none">
+      <div class="month-bar" style="margin-top:14px">
+        <button onclick="changeMonth(-1)">‹</button>
+        <span id="month-label-inc">June 2026</span>
+        <button onclick="changeMonth(1)">›</button>
+      </div>
+      <div id="inc-body"></div>
+      <div style="height:80px"></div>
+    </div>
+
+  </div>
+
+  <button class="fab" onclick="showFabMenu()">+</button>
+</div>
+
+<!-- ══════════ HISTORY ══════════ -->
+<div class="screen" id="screen-history">
+  <div class="topbar">
+    <div style="width:36px"></div>
+    <h1>History</h1>
+    <div style="width:36px"></div>
+  </div>
+  <div class="scroll" id="history-scroll"></div>
+</div>
+
+<!-- ══════════ BOTTOM NAV ══════════ -->
+<div class="bottom-nav" id="bottom-nav">
+  <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>Home</span>
+  </button>
+  <button class="nav-btn" id="nav-insights" onclick="switchTab('insights')">
+    <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <div class="nav-dot"></div>
+    <span>Insights</span>
+  </button>
+  <button class="nav-btn" id="nav-history" onclick="switchTab('history')">
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <span>History</span>
+  </button>
+</div>
+
+<!-- ══════════ CATEGORY MODAL ══════════ -->
+<div class="modal-overlay" id="cat-modal" onclick="closeCatModalBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2 id="cat-modal-title">Select Category</h2>
+      <button class="modal-close" onclick="closeCatModal()">✕</button>
+    </div>
+    <div class="cat-grid" id="cat-grid"></div>
+  </div>
+</div>
+
+<!-- ══════════ CREATE CATEGORY MODAL ══════════ -->
+<div class="modal-overlay" id="create-cat-modal" onclick="closeCreateCategoryModalBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Create Category</h2>
+      <button class="modal-close" onclick="closeCreateCategoryModal()">✕</button>
+    </div>
+    <div style="padding:6px 16px 28px">
+      <div class="auth-error" id="create-cat-error"></div>
+      <div class="form-group">
+        <label>Category Name</label>
+        <input class="form-input" type="text" id="create-cat-input" placeholder="e.g. Pet care" maxlength="24" autocomplete="off">
+      </div>
+      <button class="btn-primary" style="width:100%;margin-top:16px" onclick="submitCreateCategory()">Add Category</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ EXPENSE TAG MODAL (payment method) ══════════ -->
+<div class="modal-overlay" id="tag-modal" onclick="closeTagModalBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Select Expense Tag</h2>
+      <button class="modal-close" onclick="closeTagModal()">✕</button>
+    </div>
+    <div class="cat-grid" id="tag-grid"></div>
+  </div>
+</div>
+
+<!-- ══════════ TXN ACTION MENU ══════════ -->
+<div class="modal-overlay" id="txn-menu-modal" onclick="closeTxnMenuBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Transaction</h2>
+      <button class="modal-close" onclick="closeTxnMenu()">✕</button>
+    </div>
+    <div style="padding:14px 16px 28px;display:flex;flex-direction:column;gap:10px">
+      <button class="btn-outline" onclick="editTxn()">✏️&nbsp;&nbsp;Edit</button>
+      <button class="btn-outline" style="background:var(--red-light);color:var(--red)" onclick="deleteTxn()">🗑️&nbsp;&nbsp;Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ BUDGET MENU MODAL ══════════ -->
+<div class="modal-overlay" id="budget-menu-modal" onclick="closeBudgetMenuBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Budget</h2>
+      <button class="modal-close" onclick="closeBudgetMenu()">✕</button>
+    </div>
+    <div style="padding:14px 16px 28px;display:flex;flex-direction:column;gap:10px">
+      <button class="btn-outline" onclick="editBudget()">✏️&nbsp;&nbsp;Edit</button>
+      <button class="btn-outline" style="background:var(--red-light);color:var(--red)" onclick="deleteBudget()">🗑️&nbsp;&nbsp;Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CURRENCY MODAL ══════════ -->
+<div class="modal-overlay" id="currency-modal" onclick="closeCurrencyModalBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Select Currency</h2>
+      <button class="modal-close" onclick="closeCurrencyModal()">✕</button>
+    </div>
+    <div style="padding:12px 16px 4px">
+      <input class="form-input" id="currency-search" type="text" placeholder="Search currency or code…" oninput="renderCurrencyList()">
+    </div>
+    <div id="currency-list" style="overflow-y:auto;padding:8px 8px 24px"></div>
+  </div>
+</div>
+
+<!-- ══════════ STATEMENT DOWNLOAD MODAL ══════════ -->
+<div class="modal-overlay" id="statement-modal" onclick="closeStatementModalBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Download Statement</h2>
+      <button class="modal-close" onclick="closeStatementModal()">✕</button>
+    </div>
+    <div style="padding:16px 16px calc(20px + env(safe-area-inset-bottom,0));display:flex;flex-direction:column;gap:16px">
+      <div class="seg-control">
+        <button class="seg-btn active" id="stmt-seg-month" onclick="setStatementMode('month')">This Month</button>
+        <button class="seg-btn" id="stmt-seg-custom" onclick="setStatementMode('custom')">Custom Range</button>
+      </div>
+      <div id="stmt-month-info" style="font-size:13px;color:var(--text-muted);text-align:center">
+        Statement will cover <strong id="stmt-month-label" style="color:var(--text)">June 2026</strong>
+      </div>
+      <div id="stmt-custom-fields" style="display:none;flex-direction:column;gap:14px">
+        <div class="form-group">
+          <label>From</label>
+          <div class="dmy-row">
+            <div class="dmy-wrap"><select class="dmy-select" id="stmt-from-d"></select></div>
+            <div class="dmy-wrap"><select class="dmy-select" id="stmt-from-m"></select></div>
+            <div class="dmy-wrap"><select class="dmy-select" id="stmt-from-y"></select></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>To</label>
+          <div class="dmy-row">
+            <div class="dmy-wrap"><select class="dmy-select" id="stmt-to-d"></select></div>
+            <div class="dmy-wrap"><select class="dmy-select" id="stmt-to-m"></select></div>
+            <div class="dmy-wrap"><select class="dmy-select" id="stmt-to-y"></select></div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="confirmDownloadStatement()">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ACCOUNT MODAL ══════════ -->
+<div class="modal-overlay" id="account-modal" onclick="closeAccountMenuBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>Account</h2>
+      <button class="modal-close" onclick="closeAccountMenu()">✕</button>
+    </div>
+    <div style="padding:6px 16px 28px">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">Name</div>
+      <div id="account-name-view" style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+        <div style="font-size:15px;font-weight:700;color:var(--text)" id="account-name">Set your name</div>
+        <span style="color:var(--blue,#2563eb);font-size:13px;cursor:pointer;font-weight:600" onclick="editAccountName()">Edit</span>
+      </div>
+      <div id="account-name-edit" style="display:none;margin-bottom:18px">
+        <input class="form-input" type="text" id="account-name-input" placeholder="Enter your name" maxlength="40" style="margin-bottom:8px">
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" style="flex:1" onclick="saveAccountName()">Save</button>
+          <button class="btn-outline" style="flex:1" onclick="cancelEditAccountName()">Cancel</button>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">Logged in as</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:18px" id="account-email">-</div>
+      <div id="account-sub-status" style="font-size:12.5px;color:var(--text-muted);margin-bottom:18px"></div>
+      <button class="btn-outline" style="background:var(--red-light);color:var(--red);width:100%" onclick="handleLogout()">Log Out</button>
+      <div style="text-align:center;margin-top:22px;padding-top:16px;border-top:1px solid var(--border,#eee)">
+        <div style="font-size:11.5px;color:var(--text-muted)">© <span id="app-copyright-year"></span> Moneyfinz. All rights reserved.</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">Support: <a href="mailto:moneyfinz.contact@gmail.com" style="color:var(--blue,#2563eb);text-decoration:none">moneyfinz.contact@gmail.com</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ EXPENSE FORM ══════════ -->
+<div class="form-screen" id="form-expense">
+  <div class="topbar">
+    <button class="back-btn" onclick="closeForm('form-expense')">✕</button>
+    <h1>Add Expense</h1>
+    <div style="width:36px"></div>
+  </div>
+  <div class="form-body">
+    <div class="form-group">
+      <label>Expense Amount</label>
+      <input class="form-input" type="number" id="exp-amount" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+    </div>
+    <div class="form-group">
+      <label>Category</label>
+      <div class="select-wrap">
+        <input class="form-input" type="text" id="exp-cat-display" placeholder="Bills, travel, food…" readonly onclick="openCatModal('expense')">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Expense Tag</label>
+      <div class="select-wrap">
+        <input class="form-input" type="text" id="exp-tag-display" placeholder="Cash, Card, Digital Payment…" readonly onclick="openTagModal()">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input class="form-input" type="date" id="exp-date">
+    </div>
+    <div class="form-group">
+      <label>Note (optional)</label>
+      <input class="form-input" type="text" id="exp-note" placeholder="Add a note…">
+    </div>
+  </div>
+  <div class="form-footer">
+    <button class="btn-primary" onclick="submitExpense()">Add Expense</button>
+  </div>
+</div>
+
+<!-- ══════════ INCOME FORM ══════════ -->
+<div class="form-screen" id="form-income">
+  <div class="topbar">
+    <button class="back-btn" onclick="closeForm('form-income')">✕</button>
+    <h1>Add Income</h1>
+    <div style="width:36px"></div>
+  </div>
+  <div class="form-body">
+    <div class="form-group">
+      <label>Category</label>
+      <div class="select-wrap">
+        <input class="form-input" type="text" id="inc-cat-display" placeholder="Salary, business…" readonly onclick="openCatModal('income')">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Income Amount</label>
+      <input class="form-input" type="number" id="inc-amount" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input class="form-input" type="date" id="inc-date">
+    </div>
+    <div class="form-group">
+      <label>Recurrence</label>
+      <div class="select-wrap">
+        <select class="form-input" id="inc-recurrence">
+          <option>Monthly</option><option>Weekly</option><option>Daily</option>
+          <option>Yearly</option><option>One-time</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="form-footer">
+    <button class="btn-primary" onclick="submitIncome()">Add Income</button>
+  </div>
+</div>
+
+<!-- ══════════ BUDGET FORM ══════════ -->
+<div class="form-screen" id="form-budget">
+  <div class="topbar">
+    <button class="back-btn" onclick="closeForm('form-budget')">✕</button>
+    <h1>Set Budget</h1>
+    <div style="width:36px"></div>
+  </div>
+  <div class="form-body">
+    <div class="form-group">
+      <label>Category</label>
+      <div class="select-wrap">
+        <input class="form-input" type="text" id="bud-cat-display" placeholder="Bills, travel, food…" readonly onclick="openCatModal('budget')">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Budget Amount</label>
+      <input class="form-input" type="number" id="bud-amount" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+    </div>
+    <div class="form-group">
+      <label>Recurrence</label>
+      <div class="select-wrap">
+        <select class="form-input" id="bud-recurrence">
+          <option>Monthly</option><option>Weekly</option><option>Yearly</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="form-footer">
+    <button class="btn-primary" onclick="submitBudget()">Set Budget</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+</div><!-- #app -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+// ── DATA ──────────────────────────────────────────────
+const S = {
+  txns: JSON.parse(localStorage.getItem('pt_txns')||'[]'),
+  budgets: JSON.parse(localStorage.getItem('pt_bud')||'[]'),
+  currency: localStorage.getItem('pt_currency')||'USD',
+  rates: JSON.parse(localStorage.getItem('pt_rates')||'null'),
+  ratesDate: localStorage.getItem('pt_rates_date')||'',
+  customExpCats: JSON.parse(localStorage.getItem('pt_custom_exp_cats')||'[]'),
+  customIncCats: JSON.parse(localStorage.getItem('pt_custom_inc_cats')||'[]'),
+  offset: 0,
+  insTab: 'overview',
+  catFor: '',
+  editingId: null,
+  editingBudgetId: null,
+  activeTxnId: null,
+  activeBudgetId: null,
+};
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// pdf: ASCII-only code used inside generated PDFs, since exotic currency
+// glyphs (৳ ₹ ₩ ₦ etc.) aren't supported by the PDF's built-in font.
+const CURRENCIES = [
+  {code:'USD', symbol:'$',  name:'US Dollar'},
+  {code:'EUR', symbol:'€',  name:'Euro'},
+  {code:'GBP', symbol:'£',  name:'British Pound'},
+  {code:'BDT', symbol:'৳',  name:'Bangladeshi Taka'},
+  {code:'INR', symbol:'₹',  name:'Indian Rupee'},
+  {code:'PKR', symbol:'₨',  name:'Pakistani Rupee'},
+  {code:'NPR', symbol:'₨',  name:'Nepalese Rupee'},
+  {code:'LKR', symbol:'₨',  name:'Sri Lankan Rupee'},
+  {code:'JPY', symbol:'¥',  name:'Japanese Yen'},
+  {code:'CNY', symbol:'¥',  name:'Chinese Yuan'},
+  {code:'KRW', symbol:'₩',  name:'South Korean Won'},
+  {code:'AUD', symbol:'$',  name:'Australian Dollar'},
+  {code:'CAD', symbol:'$',  name:'Canadian Dollar'},
+  {code:'NZD', symbol:'$',  name:'New Zealand Dollar'},
+  {code:'SGD', symbol:'$',  name:'Singapore Dollar'},
+  {code:'HKD', symbol:'$',  name:'Hong Kong Dollar'},
+  {code:'MYR', symbol:'RM', name:'Malaysian Ringgit'},
+  {code:'IDR', symbol:'Rp', name:'Indonesian Rupiah'},
+  {code:'THB', symbol:'฿',  name:'Thai Baht'},
+  {code:'PHP', symbol:'₱',  name:'Philippine Peso'},
+  {code:'VND', symbol:'₫',  name:'Vietnamese Dong'},
+  {code:'AED', symbol:'د.إ', name:'UAE Dirham'},
+  {code:'SAR', symbol:'﷼',  name:'Saudi Riyal'},
+  {code:'EGP', symbol:'£',  name:'Egyptian Pound'},
+  {code:'TRY', symbol:'₺',  name:'Turkish Lira'},
+  {code:'RUB', symbol:'₽',  name:'Russian Ruble'},
+  {code:'ZAR', symbol:'R',  name:'South African Rand'},
+  {code:'NGN', symbol:'₦',  name:'Nigerian Naira'},
+  {code:'KES', symbol:'KSh',name:'Kenyan Shilling'},
+  {code:'BRL', symbol:'R$', name:'Brazilian Real'},
+  {code:'MXN', symbol:'$',  name:'Mexican Peso'},
+  {code:'CHF', symbol:'Fr', name:'Swiss Franc'},
+  {code:'SEK', symbol:'kr', name:'Swedish Krona'},
+  {code:'NOK', symbol:'kr', name:'Norwegian Krone'},
+  {code:'PLN', symbol:'zł', name:'Polish Zloty'},
+];
+
+function getCurrency(){
+  return CURRENCIES.find(c=>c.code===S.currency) || CURRENCIES[0];
+}
+
+const EXP_CATS = [
+  {id:'add',  label:'Add Category',  icon:'➕', primary:true},
+  {id:'house',label:'House',         icon:'🏠'},
+  {id:'bills',label:'Bills',         icon:'📋'},
+  {id:'car',  label:'Transportation',icon:'🚗'},
+  {id:'food', label:'Food',          icon:'🍽️'},
+  {id:'save', label:'Savings',       icon:'💰'},
+  {id:'shop', label:'Shopping',      icon:'🛒'},
+  {id:'hlth', label:'Healthcare',    icon:'❤️'},
+  {id:'groc', label:'Groceries',     icon:'🛍️'},
+  {id:'fam',  label:'Family',        icon:'👨‍👩‍👧'},
+  {id:'self', label:'Personal',      icon:'😊'},
+  {id:'don',  label:'Donation',      icon:'🤲'},
+  {id:'cour', label:'Courier',       icon:'📦'},
+  {id:'mob',  label:'Mobile Recharge',icon:'📱'},
+  {id:'trv',  label:'Travel',        icon:'✈️'},
+];
+const INC_CATS = [
+  {id:'add', label:'Add Category', icon:'➕', primary:true},
+  {id:'sal', label:'Salary',       icon:'💼'},
+  {id:'biz', label:'Business',     icon:'🏢'},
+  {id:'ast', label:'Asset Income', icon:'🌱'},
+  {id:'frln',label:'Freelance',    icon:'💻'},
+  {id:'rent',label:'Rental',       icon:'🏘️'},
+  {id:'inv', label:'Investment',   icon:'📈'},
+  {id:'gift',label:'Gift',         icon:'🎁'},
+  {id:'oth', label:'Other',        icon:'💵'},
+];
+const EXP_TAGS = [
+  {id:'cash',    label:'Cash',             icon:'💵'},
+  {id:'card',    label:'Card',             icon:'💳'},
+  {id:'digital', label:'Digital Payment',  icon:'📱'},
+];
+
+// ── HELPERS ───────────────────────────────────────────
+// Cloud sync is debounced so rapid edits (e.g. deleting several
+// transactions in a row) don't fire a Firestore write per click.
+let financeSyncTimer = null;
+function syncFinanceToCloud(){
+  if(financeSyncTimer) clearTimeout(financeSyncTimer);
+  financeSyncTimer = setTimeout(()=>{
+    if(window.fbSaveFinanceData){
+      window.fbSaveFinanceData({
+        txns:S.txns, budgets:S.budgets, currency:S.currency,
+        customExpCats:S.customExpCats, customIncCats:S.customIncCats
+      }).catch(e=>console.log('Cloud sync failed (will retry on next change):', e));
+    }
+  }, 600);
+}
+function save(){
+  localStorage.setItem('pt_txns', JSON.stringify(S.txns));
+  localStorage.setItem('pt_bud',  JSON.stringify(S.budgets));
+  syncFinanceToCloud();
+}
+// Persists user-created ("Add Category") custom categories, both locally
+// and (debounced) to the cloud alongside the rest of the finance data.
+function saveCustomCats(){
+  localStorage.setItem('pt_custom_exp_cats', JSON.stringify(S.customExpCats));
+  localStorage.setItem('pt_custom_inc_cats', JSON.stringify(S.customIncCats));
+  syncFinanceToCloud();
+}
+// Escapes a user-typed string so it can be safely embedded inside a
+// single-quoted JS string literal within an onclick="..." HTML attribute.
+function jsAttrEscape(s){
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+}
+function getMonth(){
+  const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+S.offset);
+  return {m:d.getMonth(), y:d.getFullYear()};
+}
+function monthLabel(){ const {m,y}=getMonth(); return MONTHS[m]+' '+y; }
+function txForMonth(){
+  const {m,y}=getMonth();
+  return S.txns.filter(t=>{ const d=new Date(t.date); return d.getMonth()===m&&d.getFullYear()===y; });
+}
+function fmt(n){ return getCurrency().symbol+n.toFixed(2); }
+function fmtShort(n){ return getCurrency().symbol+Math.round(n); }
+function fmtPdf(n){ return getCurrency().code+' '+n.toFixed(2); }
+// Today's date in YYYY-MM-DD, matching the phone's local clock — used as the
+// default for new expense/income entries instead of a hardcoded date.
+function todayStr(){
+  const d=new Date();
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+// ── CURRENCY CONVERSION ─────────────────────────────────
+// Converts an amount that was originally entered in `from` currency into
+// the currently selected display currency, using exchange rates cached
+// from https://open.er-api.com (base: USD, refreshed once per day).
+function convert(amount, from, to){
+  from = from || 'USD';
+  if(from===to || !S.rates) return amount;
+  const rFrom = S.rates[from], rTo = S.rates[to];
+  if(!rFrom || !rTo) return amount; // unknown code — show as-is rather than guess
+  return (amount / rFrom) * rTo;
+}
+function txAmt(t){ return convert(t.amount, t.currency||'USD', S.currency); }
+function budAmt(b){ return convert(b.amount, b.currency||'USD', S.currency); }
+
+async function refreshRates(force){
+  const today = new Date().toISOString().slice(0,10);
+  if(!force && S.rates && S.ratesDate===today) return;
+  try{
+    const res = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await res.json();
+    if(data && data.result==='success' && data.rates){
+      S.rates = data.rates;
+      S.ratesDate = today;
+      localStorage.setItem('pt_rates', JSON.stringify(S.rates));
+      localStorage.setItem('pt_rates_date', S.ratesDate);
+      renderHome(); refreshInsights();
+    }
+  } catch(e){
+    console.log('Exchange rate refresh failed, using last cached rates:', e);
+  }
+}
+
+// ── GREETING (synced to the phone's local clock) ───────
+function getGreeting(){
+  const h=new Date().getHours();
+  if(h>=5 && h<12)  return 'Good morning 👋';
+  if(h>=12 && h<17) return 'Good afternoon 👋';
+  if(h>=17 && h<21) return 'Good evening 👋';
+  return 'Good night 🌙';
+}
+function updateGreeting(){
+  const el=document.getElementById('hero-greeting');
+  if(el) el.textContent=getGreeting();
+}
+
+// ── OFFLINE / ONLINE STATUS ──────────────────────────
+// The app already works fully offline: every entry is written to
+// localStorage immediately (see save()), so no visible indicator is
+// needed for offline data entry to work. This just silently gives the
+// cloud sync an immediate nudge the moment the network comes back,
+// instead of waiting for the next edit.
+window.addEventListener('online', ()=>{ syncFinanceToCloud(); });
+
+let toastT;
+{ const cy = document.getElementById('app-copyright-year'); if(cy) cy.textContent = new Date().getFullYear(); }
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2400);
+}
+
+// ── NAVIGATION ────────────────────────────────────────
+const TABS=['home','insights','history'];
+function switchTab(tab){
+  TABS.forEach(t=>{
+    document.getElementById('screen-'+t).classList.remove('active');
+    document.getElementById('nav-'+t).classList.remove('active');
+  });
+  document.getElementById('screen-'+tab).classList.add('active');
+  document.getElementById('nav-'+tab).classList.add('active');
+  if(tab==='insights') refreshInsights();
+  if(tab==='history')  renderHistory();
+  if(tab==='home')     renderHome();
+}
+
+// ── INSIGHT TABS ──────────────────────────────────────
+function switchInsightTab(tab, btn){
+  ['overview','expense','budget','income'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display='none';
+  });
+  document.querySelectorAll('#insights-tabs button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).style.display='';
+  btn.classList.add('active');
+  S.insTab=tab;
+  refreshInsights();
+}
+
+// ── MONTH ─────────────────────────────────────────────
+function changeMonth(d){
+  S.offset+=d;
+  ['month-label','month-label-exp','month-label-bud','month-label-inc']
+    .forEach(id=>{ const el=document.getElementById(id); if(el)el.textContent=monthLabel(); });
+  refreshInsights();
+}
+
+// ── RENDER HOME ───────────────────────────────────────
+function renderHome(){
+  updateGreeting();
+  const income=S.txns.filter(t=>t.type==='income').reduce((s,t)=>s+txAmt(t),0);
+  const expense=S.txns.filter(t=>t.type==='expense').reduce((s,t)=>s+txAmt(t),0);
+  document.getElementById('home-balance').textContent=fmt(income-expense);
+  document.getElementById('home-income').textContent=fmtShort(income);
+  document.getElementById('home-expense').textContent=fmtShort(expense);
+  const list=document.getElementById('home-tx-list');
+  const recent=[...S.txns].reverse().slice(0,8);
+  if(!recent.length){
+    list.innerHTML=`<div class="empty-state" style="padding:30px 24px">
+      <div class="empty-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+      <p>No transactions yet</p>
+      <small>Tap Expense or Income above to get started</small>
+    </div>`;
+    return;
+  }
+  list.innerHTML=recent.map(t=>txRow(t, false)).join('');
+}
+function txRow(t, showMenu=true){
+  const sign=t.type==='expense'?'-':'+';
+  const d=new Date(t.date);
+  const ds=d.toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'});
+  return `<div class="tx-item">
+    <div class="tx-icon">${t.icon||'💰'}</div>
+    <div class="tx-info">
+      <div class="tx-name">${t.category}</div>
+      <div class="tx-date">${ds}${t.note?' · '+t.note:''}${t.tag?' · '+t.tag:''}</div>
+    </div>
+    <div class="tx-amount ${t.type}">${sign}${fmt(txAmt(t))}</div>
+    ${showMenu?`<div class="li-menu" onclick="openTxnMenu(event, ${t.id})"><i></i><i></i><i></i></div>`:''}
+  </div>`;
+}
+
+// ── EXPENSE OVERVIEW (donut chart) ─────────────────────
+const DONUT_COLORS=['#7C93C9','#A78BFA','#F97316','#34D399','#F87171','#FBBF24','#38BDF8','#F472B6','#94A3B8','#4ADE80'];
+
+// Jump to another tab inside Insights (used by the chevron / row taps below)
+function goToInsightTab(tab){
+  const order=['overview','expense','budget','income'];
+  const idx=order.indexOf(tab);
+  const btn=document.querySelector('#insights-tabs button:nth-child('+(idx+1)+')');
+  if(btn) switchInsightTab(tab, btn);
+}
+
+function expenseOverviewHTML(exps, total){
+  if(!exps.length || total<=0) return '';
+
+  // Group by category
+  const map={};
+  exps.forEach(t=>{
+    if(!map[t.category]) map[t.category]={name:t.category, icon:t.icon||'💰', amount:0, count:0};
+    map[t.category].amount+=txAmt(t);
+    map[t.category].count++;
+  });
+  const cats=Object.values(map).sort((a,b)=>b.amount-a.amount);
+
+  // Build donut ring segments (SVG stroke-dasharray technique)
+  const r=45, cx=60, cy=60;
+  const circumference=2*Math.PI*r;
+  let cumulative=0;
+  const segs=cats.map((c,i)=>{
+    const pct=c.amount/total;
+    const dash=pct*circumference;
+    const offset=-(cumulative*circumference);
+    cumulative+=pct;
+    return {...c, pct, dash, offset, color:DONUT_COLORS[i%DONUT_COLORS.length]};
+  });
+
+  const ringSvg=`<svg viewBox="0 0 120 120" width="150" height="150">
+    <g transform="rotate(-90 ${cx} ${cy})">
+      ${segs.map(s=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="20"
+        stroke-dasharray="${s.dash.toFixed(3)} ${(circumference-s.dash).toFixed(3)}"
+        stroke-dashoffset="${s.offset.toFixed(3)}"/>`).join('')}
+    </g>
+  </svg>`;
+
+  const legend=`<div class="expov-legend">
+    ${segs.map(s=>`<div class="expov-legend-item">
+      <span class="expov-dot" style="background:${s.color}"></span>
+      <span>${s.name} (${(s.pct*100).toFixed(2)}%)</span>
+    </div>`).join('')}
+  </div>`;
+
+  const catRows=segs.map(s=>`<div class="cat-row" onclick="goToInsightTab('expense')">
+    <div class="cat-row-icon">${s.icon}</div>
+    <div class="cat-row-info">
+      <div class="cat-row-name">${s.name}</div>
+      <div class="cat-row-sub">${s.count} Transaction${s.count>1?'s':''}</div>
+    </div>
+    <div class="cat-row-amount">- ${fmt(s.amount)}</div>
+    <svg class="cat-row-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>`).join('');
+
+  return `<div class="card" style="margin-top:12px">
+    <div class="card-title-row">
+      <div class="card-title">Expense overview</div>
+      <button class="card-chevron-btn" onclick="goToInsightTab('expense')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <div class="total-block" style="margin-bottom:6px">
+      <div class="total-lbl">Total Expense</div>
+      <div class="total-val">${fmt(total)}</div>
+    </div>
+    <div class="expov-wrap">
+      ${ringSvg}
+      ${legend}
+    </div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <div class="card-title">Top expense categories</div>
+    ${catRows}
+  </div>`;
+}
+
+// ── RENDER INSIGHTS ───────────────────────────────────
+function refreshInsights(){
+  const txs=txForMonth();
+  const income=txs.filter(t=>t.type==='income').reduce((s,t)=>s+txAmt(t),0);
+  const expense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+txAmt(t),0);
+  // Newest-first for display, matching Home and History ordering
+  const sortedTxs=[...txs].sort((a,b)=> new Date(b.date)-new Date(a.date) || (b.id||0)-(a.id||0));
+
+  // All month labels
+  ['month-label','month-label-exp','month-label-bud','month-label-inc']
+    .forEach(id=>{ const el=document.getElementById(id); if(el)el.textContent=monthLabel(); });
+
+  // Summary chips
+  document.getElementById('ov-income').textContent=fmtShort(income);
+  document.getElementById('ov-expense').textContent=expense>0?fmtShort(expense):'N/A';
+  document.getElementById('ov-avail').textContent=fmtShort(income-expense);
+
+  // Expense list for this month (needed by both the Overview donut and the Expense tab)
+  const exps=sortedTxs.filter(t=>t.type==='expense');
+
+  // Overview body
+  const ovb=document.getElementById('ov-body');
+  if(!txs.length){
+    ovb.innerHTML=emptyState('No transaction found','Add your first transaction below','openExpenseForm()','+ Add Transaction');
+  } else {
+    const rows=sortedTxs.map(t=>txRow(t, false)).join('');
+    ovb.innerHTML=`
+      ${expenseOverviewHTML(exps, expense)}
+      <div class="card" style="margin-top:12px">
+        <div class="card-title">All Transactions</div>
+        ${rows}
+      </div>`;
+  }
+
+  // Expense body
+  const expb=document.getElementById('exp-body');
+  if(!exps.length){
+    expb.innerHTML=emptyState('No expense transaction found','Track where your money goes','openExpenseForm()','+ Add Expense');
+  } else {
+    const total=exps.reduce((s,t)=>s+txAmt(t),0);
+    expb.innerHTML=`<div class="card" style="margin-top:12px">
+      <div class="total-block">
+        <div class="total-lbl">Total Expense</div>
+        <div class="total-val" style="color:var(--red)">${fmt(total)}</div>
+      </div>
+      ${exps.map(t=>txRow(t)).join('')}
+    </div>`;
+  }
+
+  // Budget body
+  const budb=document.getElementById('bud-body');
+  if(!S.budgets.length){
+    budb.innerHTML=emptyState('No budget set','Set a monthly budget to track spending','openBudgetForm()','Set Budget');
+  } else {
+    budb.innerHTML=`<div class="card" style="margin-top:12px">
+      <div class="card-title">Monthly Budgets</div>
+      ${S.budgets.map(b=>{
+        const spent=exps.filter(e=>e.category===b.category).reduce((s,e)=>s+txAmt(e),0);
+        const budTotal=budAmt(b);
+        const pct=Math.min(100,budTotal>0?(spent/budTotal)*100:0);
+        const over=spent>budTotal;
+        return `<div class="budget-item">
+          <div class="budget-header">
+            <div class="budget-cat">
+              <div class="budget-cat-icon">${b.icon||'📋'}</div>
+              <div class="budget-cat-name">${b.category}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="budget-meta">
+                <div class="budget-spent" style="color:${over?'var(--red)':'var(--text)'}">${fmt(spent)}</div>
+                <div class="budget-total">of ${fmt(budTotal)}</div>
+              </div>
+              <div class="li-menu" onclick="openBudgetMenu(event, ${b.id})"><i></i><i></i><i></i></div>
+            </div>
+          </div>
+          <div class="budget-bar-track">
+            <div class="budget-bar-fill ${over?'over':''}" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // Income body
+  const incs=sortedTxs.filter(t=>t.type==='income');
+  const incb=document.getElementById('inc-body');
+  if(!incs.length){
+    incb.innerHTML=emptyState('No income found','Record your income sources','openIncomeForm()','+ Add Income');
+  } else {
+    const total=incs.reduce((s,t)=>s+txAmt(t),0);
+    const saved=total-expense;
+    incb.innerHTML=`<div class="card" style="margin-top:12px">
+      <div class="total-block">
+        <div class="total-lbl">Total Income</div>
+        <div class="total-val">${fmt(total)}</div>
+      </div>
+      ${saved>0?`<div class="info-strip">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>You've saved ${fmtShort(saved)} so far this month</span>
+      </div>`:''}
+      <div class="list-lbl">Income list</div>
+      ${incs.map(t=>`<div class="list-item">
+        <div class="li-icon">${t.icon||'💰'}</div>
+        <div class="li-name">${t.category}</div>
+        <div class="li-amount">${fmt(txAmt(t))}</div>
+        <div class="li-menu" onclick="openTxnMenu(event, ${t.id})"><i></i><i></i><i></i></div>
+      </div>`).join('')}
+    </div>`;
+  }
+}
+
+function emptyState(title, sub, fn, btnLabel){
+  return `<div class="card" style="margin-top:12px">
+    <div class="empty-state">
+      <div class="empty-icon">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" stroke-width="1.8">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14,2 14,8 20,8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        <div class="empty-badge">⏰</div>
+      </div>
+      <p>${title}</p>
+      <small>${sub}</small>
+      <button class="btn-primary" onclick="${fn}" style="margin-top:4px">${btnLabel}</button>
+    </div>
+  </div>`;
+}
+
+// ── RENDER HISTORY ────────────────────────────────────
+function renderHistory(){
+  const sc=document.getElementById('history-scroll');
+  if(!S.txns.length){
+    sc.innerHTML=`<div class="history-empty">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      <p>No transaction history</p>
+    </div>`;
+    return;
+  }
+  // Group by date
+  const groups={};
+  [...S.txns].reverse().forEach(t=>{
+    const d=new Date(t.date);
+    const key=d.toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'});
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(t);
+  });
+  sc.innerHTML=Object.entries(groups).map(([date,txs])=>`
+    <div class="history-date-header">${date}</div>
+    ${txs.map(t=>txRow(t, false)).join('')}
+  `).join('');
+}
+
+// ── CATEGORY MODAL ────────────────────────────────────
+function openCatModal(forType){
+  S.catFor=forType;
+  const isIncome=forType==='income';
+  const builtIn=isIncome?INC_CATS:EXP_CATS;
+  const custom=isIncome?S.customIncCats:S.customExpCats;
+  const cats=[...builtIn, ...custom];
+  document.getElementById('cat-modal-title').textContent=isIncome?'Income Category':'Expense Category';
+  document.getElementById('cat-grid').innerHTML=cats.map(c=>{
+    if(c.id==='add'){
+      return `<div class="cat-cell" onclick="openCreateCategoryModal('${forType}')">
+        <div class="cat-circle primary">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+        <span>${c.label}</span>
+      </div>`;
+    }
+    return `<div class="cat-cell" onclick="pickCat('${c.id}','${jsAttrEscape(c.label)}','${c.icon||'💰'}')">
+      <div class="cat-circle">${c.icon}</div>
+      <span>${c.label}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('cat-modal').classList.add('open');
+}
+function closeCatModal(){ document.getElementById('cat-modal').classList.remove('open'); }
+function closeCatModalBg(e){ if(e.target===document.getElementById('cat-modal')) closeCatModal(); }
+function pickCat(id,label,icon){
+  const map={expense:'exp',income:'inc',budget:'bud'};
+  const pre=map[S.catFor];
+  const el=document.getElementById(pre+'-cat-display');
+  el.value=label; el.dataset.icon=icon; el.dataset.catid=id;
+  closeCatModal();
+}
+
+// ── CREATE CATEGORY (custom, user-named) ───────────────
+// forType is 'expense', 'income', or 'budget' — carried over from
+// whichever form's "Add Category" cell was tapped (S.catFor is already
+// set to it by openCatModal). Budgets share the expense category pool,
+// same as the built-in categories do.
+function openCreateCategoryModal(forType){
+  S.catFor=forType;
+  closeCatModal();
+  document.getElementById('create-cat-input').value='';
+  document.getElementById('create-cat-error').classList.remove('show');
+  document.getElementById('create-cat-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('create-cat-input').focus(), 250);
+}
+function closeCreateCategoryModal(){ document.getElementById('create-cat-modal').classList.remove('open'); }
+function closeCreateCategoryModalBg(e){ if(e.target===document.getElementById('create-cat-modal')) closeCreateCategoryModal(); }
+
+function submitCreateCategory(){
+  const input=document.getElementById('create-cat-input');
+  const name=input.value.trim();
+  const errEl=document.getElementById('create-cat-error');
+  errEl.classList.remove('show');
+
+  if(!name){
+    errEl.textContent='Please enter a category name.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  const isIncome=S.catFor==='income';
+  const builtIn=isIncome?INC_CATS:EXP_CATS;
+  const customList=isIncome?S.customIncCats:S.customExpCats;
+  const taken=[...builtIn, ...customList]
+    .filter(c=>c.id!=='add')
+    .some(c=>c.label.toLowerCase()===name.toLowerCase());
+  if(taken){
+    errEl.textContent='This category already exists.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  const newCat={ id:'custom_'+Date.now(), label:name, icon:isIncome?'💵':'🏷️' };
+  customList.push(newCat);
+  saveCustomCats();
+
+  closeCreateCategoryModal();
+  // Select the freshly created category right away, and refresh the
+  // grid underneath so it appears next time this picker is opened.
+  pickCat(newCat.id, newCat.label, newCat.icon);
+  showToast('✓ Category "'+name+'" added');
+}
+
+// ── EXPENSE TAG (payment method: Cash / Card / Digital Payment) ────
+function openTagModal(){
+  document.getElementById('tag-grid').innerHTML=EXP_TAGS.map(t=>`
+    <div class="cat-cell" onclick="pickTag('${t.id}','${t.label}','${t.icon}')">
+      <div class="cat-circle">${t.icon}</div>
+      <span>${t.label}</span>
+    </div>`).join('');
+  document.getElementById('tag-modal').classList.add('open');
+}
+function closeTagModal(){ document.getElementById('tag-modal').classList.remove('open'); }
+function closeTagModalBg(e){ if(e.target===document.getElementById('tag-modal')) closeTagModal(); }
+function pickTag(id,label,icon){
+  const el=document.getElementById('exp-tag-display');
+  el.value=label; el.dataset.icon=icon; el.dataset.tagid=id;
+  closeTagModal();
+}
+
+// ── CURRENCY MODAL ──────────────────────────────────────
+function updateCurrencyPill(){
+  const c=getCurrency();
+  const btn=document.getElementById('currency-pill-btn');
+  if(btn) btn.textContent=c.symbol+' '+c.code+' ▾';
+}
+function openCurrencyModal(){
+  document.getElementById('currency-search').value='';
+  renderCurrencyList();
+  document.getElementById('currency-modal').classList.add('open');
+}
+function closeCurrencyModal(){ document.getElementById('currency-modal').classList.remove('open'); }
+function closeCurrencyModalBg(e){ if(e.target===document.getElementById('currency-modal')) closeCurrencyModal(); }
+function renderCurrencyList(){
+  const q=(document.getElementById('currency-search').value||'').trim().toLowerCase();
+  const list=document.getElementById('currency-list');
+  const filtered=CURRENCIES.filter(c=>
+    !q || c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
+  );
+  if(!filtered.length){
+    list.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:14px">No currency found</div>';
+    return;
+  }
+  list.innerHTML=filtered.map(c=>`
+    <div class="currency-item ${c.code===S.currency?'selected':''}" onclick="selectCurrency('${c.code}')">
+      <div class="currency-symbol">${c.symbol}</div>
+      <div class="currency-info">
+        <div class="currency-name">${c.name}</div>
+        <div class="currency-code">${c.code}</div>
+      </div>
+      ${c.code===S.currency?'<span class="currency-check">✓</span>':''}
+    </div>`).join('');
+}
+function selectCurrency(code){
+  S.currency=code;
+  localStorage.setItem('pt_currency', code);
+  syncFinanceToCloud();
+  closeCurrencyModal();
+  updateCurrencyPill();
+  renderHome();
+  refreshInsights();
+  refreshRates();
+  showToast('✓ Currency set to '+code);
+}
+
+// ── TXN ACTION MENU (3-dot menu) ───────────────────────
+function openTxnMenu(e, id){
+  e.stopPropagation();
+  S.activeTxnId=id;
+  document.getElementById('txn-menu-modal').classList.add('open');
+}
+function closeTxnMenu(){
+  document.getElementById('txn-menu-modal').classList.remove('open');
+  S.activeTxnId=null;
+}
+function closeTxnMenuBg(e){ if(e.target===document.getElementById('txn-menu-modal')) closeTxnMenu(); }
+
+// ── BUDGET ACTION MENU (3-dot menu) ────────────────────
+function openBudgetMenu(e, id){
+  e.stopPropagation();
+  S.activeBudgetId=id;
+  document.getElementById('budget-menu-modal').classList.add('open');
+}
+function closeBudgetMenu(){
+  document.getElementById('budget-menu-modal').classList.remove('open');
+  S.activeBudgetId=null;
+}
+function closeBudgetMenuBg(e){ if(e.target===document.getElementById('budget-menu-modal')) closeBudgetMenu(); }
+
+function deleteBudget(){
+  const id=S.activeBudgetId;
+  if(id==null) return;
+  S.budgets=S.budgets.filter(b=>b.id!==id);
+  save(); closeBudgetMenu();
+  showToast('🗑️ Budget deleted');
+  refreshInsights();
+}
+
+function editBudget(){
+  const id=S.activeBudgetId;
+  if(id==null) return;
+  const b=S.budgets.find(x=>x.id===id);
+  closeBudgetMenu();
+  if(!b) return;
+  S.editingBudgetId=b.id;
+  document.getElementById('bud-amount').value=budAmt(b).toFixed(2);
+  document.getElementById('bud-cat-display').value=b.category;
+  document.getElementById('bud-cat-display').dataset.icon=b.icon||'📋';
+  document.getElementById('bud-recurrence').value=b.recurrence||'Monthly';
+  document.querySelector('#form-budget h1').textContent='Edit Budget';
+  document.querySelector('#form-budget .btn-primary').textContent='Update Budget';
+  document.getElementById('form-budget').classList.add('open');
+}
+
+function deleteTxn(){
+  const id=S.activeTxnId;
+  if(id==null) return;
+  S.txns=S.txns.filter(t=>t.id!==id);
+  save(); closeTxnMenu();
+  showToast('🗑️ Transaction deleted');
+  refreshInsights(); renderHome();
+}
+
+function editTxn(){
+  const id=S.activeTxnId;
+  if(id==null) return;
+  const t=S.txns.find(x=>x.id===id);
+  closeTxnMenu();
+  if(!t) return;
+  S.editingId=t.id;
+  if(t.type==='income'){
+    document.getElementById('inc-amount').value=txAmt(t).toFixed(2);
+    document.getElementById('inc-cat-display').value=t.category;
+    document.getElementById('inc-cat-display').dataset.icon=t.icon||'💰';
+    document.getElementById('inc-date').value=t.date;
+    document.querySelector('#form-income h1').textContent='Edit Income';
+    document.querySelector('#form-income .btn-primary').textContent='Update Income';
+    document.getElementById('form-income').classList.add('open');
+    requestAnimationFrame(()=>{ document.getElementById('inc-date').value=t.date; });
+  } else {
+    document.getElementById('exp-amount').value=txAmt(t).toFixed(2);
+    document.getElementById('exp-cat-display').value=t.category;
+    document.getElementById('exp-cat-display').dataset.icon=t.icon||'💸';
+    document.getElementById('exp-tag-display').value=t.tag||'';
+    document.getElementById('exp-tag-display').dataset.icon=t.tagIcon||'';
+    document.getElementById('exp-tag-display').dataset.tagid=t.tagId||'';
+    document.getElementById('exp-date').value=t.date;
+    document.getElementById('exp-note').value=t.note||'';
+    document.querySelector('#form-expense h1').textContent='Edit Expense';
+    document.querySelector('#form-expense .btn-primary').textContent='Update Expense';
+    document.getElementById('form-expense').classList.add('open');
+    requestAnimationFrame(()=>{ document.getElementById('exp-date').value=t.date; });
+  }
+}
+
+// ── FORMS ─────────────────────────────────────────────
+function openExpenseForm(){
+  S.editingId=null;
+  document.querySelector('#form-expense h1').textContent='Add Expense';
+  document.querySelector('#form-expense .btn-primary').textContent='Add Expense';
+  document.getElementById('exp-amount').value='';
+  document.getElementById('exp-cat-display').value='';
+  document.getElementById('exp-cat-display').dataset.icon='';
+  document.getElementById('exp-tag-display').value=EXP_TAGS[0].label;
+  document.getElementById('exp-tag-display').dataset.icon=EXP_TAGS[0].icon;
+  document.getElementById('exp-tag-display').dataset.tagid=EXP_TAGS[0].id;
+  document.getElementById('exp-note').value='';
+  document.getElementById('form-expense').classList.add('open');
+  // Some mobile browsers don't visually paint a date <input>'s value if it
+  // was set while the field was still hidden (display:none). Setting it
+  // again on the next frame, after the form is visible, fixes that.
+  requestAnimationFrame(()=>{ document.getElementById('exp-date').value=todayStr(); });
+}
+function openIncomeForm(){
+  S.editingId=null;
+  document.querySelector('#form-income h1').textContent='Add Income';
+  document.querySelector('#form-income .btn-primary').textContent='Add Income';
+  document.getElementById('inc-amount').value='';
+  document.getElementById('inc-cat-display').value='';
+  document.getElementById('inc-cat-display').dataset.icon='';
+  document.getElementById('inc-date').value=todayStr();
+  document.getElementById('form-income').classList.add('open');
+  requestAnimationFrame(()=>{ document.getElementById('inc-date').value=todayStr(); });
+}
+function openBudgetForm(){
+  S.editingBudgetId=null;
+  document.querySelector('#form-budget h1').textContent='Set Budget';
+  document.querySelector('#form-budget .btn-primary').textContent='Set Budget';
+  document.getElementById('bud-amount').value='';
+  document.getElementById('bud-cat-display').value='';
+  document.getElementById('bud-cat-display').dataset.icon='';
+  document.getElementById('bud-recurrence').value='Monthly';
+  document.getElementById('form-budget').classList.add('open');
+}
+function closeForm(id){     document.getElementById(id).classList.remove('open'); S.editingId=null; S.editingBudgetId=null; }
+
+function showFabMenu(){
+  const t=S.insTab;
+  if(t==='income') openIncomeForm();
+  else if(t==='budget') openBudgetForm();
+  else openExpenseForm();
+}
+
+function submitExpense(){
+  const amount=parseFloat(document.getElementById('exp-amount').value);
+  const cat=document.getElementById('exp-cat-display').value;
+  const icon=document.getElementById('exp-cat-display').dataset.icon||'💸';
+  const tagEl=document.getElementById('exp-tag-display');
+  const tag=tagEl.value||'';
+  const tagIcon=tagEl.dataset.icon||'';
+  const tagId=tagEl.dataset.tagid||'';
+  const date=document.getElementById('exp-date').value||todayStr();
+  const note=document.getElementById('exp-note').value.trim();
+  if(!amount||amount<=0){ showToast('⚠️ Enter a valid amount'); return; }
+  if(!cat){ showToast('⚠️ Select a category'); return; }
+  const editing=S.editingId;
+  if(editing){
+    const t=S.txns.find(x=>x.id===editing);
+    if(t){ t.amount=amount; t.currency=S.currency; t.category=cat; t.icon=icon; t.tag=tag; t.tagIcon=tagIcon; t.tagId=tagId; t.date=date; t.note=note; }
+  } else {
+    S.txns.push({type:'expense',amount,currency:S.currency,category:cat,icon,tag,tagIcon,tagId,date,note,id:Date.now()});
+  }
+  S.editingId=null;
+  save(); closeForm('form-expense');
+  document.getElementById('exp-amount').value='';
+  document.getElementById('exp-cat-display').value='';
+  document.getElementById('exp-tag-display').value='';
+  document.getElementById('exp-tag-display').dataset.icon='';
+  document.getElementById('exp-tag-display').dataset.tagid='';
+  document.getElementById('exp-note').value='';
+  showToast(editing?'✓ Expense updated':'✓ Expense added'); refreshInsights(); renderHome();
+}
+
+function submitIncome(){
+  const amount=parseFloat(document.getElementById('inc-amount').value);
+  const cat=document.getElementById('inc-cat-display').value;
+  const icon=document.getElementById('inc-cat-display').dataset.icon||'💰';
+  const date=document.getElementById('inc-date').value||todayStr();
+  if(!amount||amount<=0){ showToast('⚠️ Enter a valid amount'); return; }
+  if(!cat){ showToast('⚠️ Select a category'); return; }
+  const editing=S.editingId;
+  if(editing){
+    const t=S.txns.find(x=>x.id===editing);
+    if(t){ t.amount=amount; t.currency=S.currency; t.category=cat; t.icon=icon; t.date=date; }
+  } else {
+    S.txns.push({type:'income',amount,currency:S.currency,category:cat,icon,date,id:Date.now()});
+  }
+  S.editingId=null;
+  save(); closeForm('form-income');
+  document.getElementById('inc-amount').value='';
+  document.getElementById('inc-cat-display').value='';
+  showToast(editing?'✓ Income updated':'✓ Income added'); refreshInsights(); renderHome();
+}
+
+function submitBudget(){
+  const amount=parseFloat(document.getElementById('bud-amount').value);
+  const cat=document.getElementById('bud-cat-display').value;
+  const icon=document.getElementById('bud-cat-display').dataset.icon||'📋';
+  const recurrence=document.getElementById('bud-recurrence').value;
+  if(!amount||amount<=0){ showToast('⚠️ Enter a valid amount'); return; }
+  if(!cat){ showToast('⚠️ Select a category'); return; }
+  const editing=S.editingBudgetId;
+  if(editing!=null){
+    const b=S.budgets.find(x=>x.id===editing);
+    if(b){ b.amount=amount; b.currency=S.currency; b.category=cat; b.icon=icon; b.recurrence=recurrence; }
+  } else {
+    // replace existing budget for same category
+    S.budgets=S.budgets.filter(b=>b.category!==cat);
+    S.budgets.push({category:cat,icon,amount,currency:S.currency,recurrence,id:Date.now()});
+  }
+  S.editingBudgetId=null;
+  save(); closeForm('form-budget');
+  document.getElementById('bud-amount').value='';
+  document.getElementById('bud-cat-display').value='';
+  showToast(editing!=null?'✓ Budget updated':'✓ Budget set'); refreshInsights();
+}
+
+// ── STATEMENT PDF DOWNLOAD ─────────────────────────────
+let stmtMode='month';
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function getMonthRange(){
+  const {m,y}=getMonth();
+  const lastDay=new Date(y,m+1,0).getDate();
+  return { start:y+'-'+pad2(m+1)+'-01', end:y+'-'+pad2(m+1)+'-'+pad2(lastDay) };
+}
+function fmtRangeLabel(fromStr,toStr){
+  const opts={day:'2-digit',month:'short',year:'numeric'};
+  const from=new Date(fromStr+'T00:00:00').toLocaleDateString('en-GB',opts);
+  const to=new Date(toStr+'T00:00:00').toLocaleDateString('en-GB',opts);
+  return fromStr===toStr ? from : from+' – '+to;
+}
+
+// Builds the Day / Month / Year <select> options (once) and sets them to dateStr ('YYYY-MM-DD')
+function populateDmy(prefix, dateStr){
+  const dSel=document.getElementById(prefix+'-d');
+  const mSel=document.getElementById(prefix+'-m');
+  const ySel=document.getElementById(prefix+'-y');
+  if(!dSel.options.length){
+    for(let d=1;d<=31;d++) dSel.innerHTML+='<option value="'+pad2(d)+'">'+d+'</option>';
+    MONTHS.forEach((mn,i)=>{ mSel.innerHTML+='<option value="'+pad2(i+1)+'">'+mn.slice(0,3)+'</option>'; });
+    const curY=new Date().getFullYear();
+    for(let y=curY-6;y<=curY+1;y++) ySel.innerHTML+='<option value="'+y+'">'+y+'</option>';
+  }
+  const [y,m,d]=dateStr.split('-');
+  dSel.value=d; mSel.value=m; ySel.value=y;
+}
+function readDmy(prefix){
+  const d=document.getElementById(prefix+'-d').value;
+  const m=document.getElementById(prefix+'-m').value;
+  const y=document.getElementById(prefix+'-y').value;
+  return y+'-'+m+'-'+d;
+}
+
+function openStatementModal(){
+  setStatementMode('month');
+  document.getElementById('stmt-month-label').textContent=monthLabel();
+  const r=getMonthRange();
+  populateDmy('stmt-from', r.start);
+  populateDmy('stmt-to', r.end);
+  document.getElementById('statement-modal').classList.add('open');
+}
+function closeStatementModal(){ document.getElementById('statement-modal').classList.remove('open'); }
+function closeStatementModalBg(e){ if(e.target===document.getElementById('statement-modal')) closeStatementModal(); }
+
+function setStatementMode(mode){
+  stmtMode=mode;
+  document.getElementById('stmt-seg-month').classList.toggle('active', mode==='month');
+  document.getElementById('stmt-seg-custom').classList.toggle('active', mode==='custom');
+  document.getElementById('stmt-month-info').style.display = mode==='month' ? '' : 'none';
+  document.getElementById('stmt-custom-fields').style.display = mode==='custom' ? 'flex' : 'none';
+}
+
+function confirmDownloadStatement(){
+  if(stmtMode==='custom'){
+    const fromVal=readDmy('stmt-from');
+    const toVal=readDmy('stmt-to');
+    if(!fromVal||!toVal){ showToast('⚠️ Select both dates'); return; }
+    if(fromVal>toVal){ showToast('⚠️ "From" date must be before "To" date'); return; }
+    const txs=S.txns.filter(t=> t.date>=fromVal && t.date<=toVal);
+    closeStatementModal();
+    downloadStatement(txs, fmtRangeLabel(fromVal,toVal));
+  } else {
+    closeStatementModal();
+    downloadStatement(txForMonth(), monthLabel());
+  }
+}
+
+function downloadStatement(txs, periodLabel){
+  if(typeof window.jspdf === 'undefined'){
+    showToast('⚠️ PDF library failed to load — check connection');
+    return;
+  }
+  txs = txs || txForMonth();
+  periodLabel = periodLabel || monthLabel();
+  const income = txs.filter(t=>t.type==='income').reduce((s,t)=>s+txAmt(t),0);
+  const expense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+txAmt(t),0);
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'pt', format:'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const marginX = 40;
+  let y = 50;
+
+  // Header
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(18);
+  doc.setTextColor(26,86,219);
+  doc.text('Moneyfinz', marginX, y);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(11);
+  doc.setTextColor(107,114,128);
+  doc.text('Account Statement · Currency: '+getCurrency().code, marginX, y+18);
+
+  // Show the account holder's name under the currency line, but only when
+  // one has actually been set — new accounts default to no name, and we
+  // don't want to print the "Set your name" placeholder onto a real PDF.
+  const accountName = (lastUserData && lastUserData.name) ? lastUserData.name : null;
+  if(accountName){
+    doc.text('Name: '+accountName, marginX, y+34);
+  }
+
+  doc.setFontSize(10);
+  doc.text('Period: '+periodLabel, pageW-marginX, y, { align:'right' });
+  doc.text('Generated: '+new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}), pageW-marginX, y+14, { align:'right' });
+
+  y += accountName ? 54 : 40;
+  doc.setDrawColor(229,231,235);
+  doc.line(marginX, y, pageW-marginX, y);
+  y += 24;
+
+  // Summary boxes
+  const boxW = (pageW - marginX*2 - 20)/3;
+  const summary = [
+    { label:'INCOME', val:fmtPdf(income), color:[22,163,74] },
+    { label:'EXPENSE', val:fmtPdf(expense), color:[220,38,38] },
+    { label:'AVAILABLE', val:fmtPdf(income-expense), color:[26,86,219] },
+  ];
+  summary.forEach((s,i)=>{
+    const bx = marginX + i*(boxW+10);
+    doc.setFillColor(243,244,246);
+    doc.roundedRect(bx, y, boxW, 50, 6, 6, 'F');
+    doc.setFontSize(8);
+    doc.setTextColor(107,114,128);
+    doc.text(s.label, bx+10, y+18);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(13);
+    doc.setTextColor(s.color[0], s.color[1], s.color[2]);
+    doc.text(s.val, bx+10, y+38);
+    doc.setFont('helvetica','normal');
+  });
+  y += 50 + 30;
+
+  function drawTableHeader(){
+    doc.setFillColor(26,86,219);
+    doc.rect(marginX, y, pageW-marginX*2, 24, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.text('DATE', marginX+10, y+16);
+    doc.text('CATEGORY', marginX+110, y+16);
+    doc.text('TYPE', marginX+280, y+16);
+    doc.text('AMOUNT', pageW-marginX-10, y+16, { align:'right' });
+    y += 24;
+    doc.setFont('helvetica','normal');
+  }
+
+  if(!txs.length){
+    doc.setFontSize(11);
+    doc.setTextColor(107,114,128);
+    doc.text('No transactions recorded for this period.', marginX, y+20);
+  } else {
+    drawTableHeader();
+    const sorted = [...txs].sort((a,b)=> new Date(b.date)-new Date(a.date) || (b.id||0)-(a.id||0));
+    sorted.forEach((t,idx)=>{
+      if(y > pageH - 60){
+        doc.addPage();
+        y = 50;
+        drawTableHeader();
+      }
+      if(idx % 2 === 0){
+        doc.setFillColor(249,250,251);
+        doc.rect(marginX, y, pageW-marginX*2, 22, 'F');
+      }
+      doc.setFontSize(9);
+      doc.setTextColor(17,24,39);
+      const d = new Date(t.date);
+      doc.text(d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}), marginX+10, y+15);
+      doc.text(String(t.category||'-'), marginX+110, y+15);
+      if(t.type==='income') doc.setTextColor(22,163,74); else doc.setTextColor(220,38,38);
+      doc.text(t.type==='income'?'Income':'Expense', marginX+280, y+15);
+      const sign = t.type==='expense'?'-':'+';
+      doc.text(sign+fmtPdf(txAmt(t)), pageW-marginX-10, y+15, { align:'right' });
+      y += 22;
+    });
+  }
+
+  // Footer / page numbers
+  const pageCount = doc.internal.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(156,163,175);
+    doc.text('Page '+i+' of '+pageCount+' · Moneyfinz', pageW/2, pageH-26, { align:'center' });
+    doc.text('Support: moneyfinz.contact@gmail.com', pageW/2, pageH-14, { align:'center' });
+  }
+
+  const safeName = periodLabel.replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  const fname = 'Moneyfinz_Statement_'+safeName+'.pdf';
+  doc.save(fname);
+  showToast('✓ Statement downloaded');
+}
+
+// ── AUTH / SUBSCRIPTION GATE ─────────────────────────
+let appInitialized = false;
+let authMode = 'login';
+let bootResolved = false;
+// The most recent user-doc payload we received (from Firestore or the
+// offline fallback). Kept around so we can re-run the subscription check
+// on our own, without waiting for a fresh write to arrive from Firestore —
+// see scheduleExpiryWatch() below.
+let lastUserData = null;
+let expiryWatchTimer = null;
+
+function showBootError(msg){
+  bootResolved = true;
+  const loading = document.getElementById('boot-loading');
+  const errBlock = document.getElementById('boot-error');
+  if(loading) loading.style.display='none';
+  if(errBlock){
+    errBlock.style.display='flex';
+    document.getElementById('boot-error-msg').textContent = msg;
+  }
+}
+window.onBootError = showBootError;
+
+// Watchdog: if Firebase never calls back within 10s (e.g. the module script
+// was silently blocked because this file was opened directly with file://
+// instead of served over http/https), show a helpful error instead of
+// spinning forever.
+setTimeout(function(){
+  if(!bootResolved){
+    showBootError(
+      "This is taking too long to load. The most common cause: this HTML file was opened directly " +
+      "by double-clicking it. Please serve it through a web server instead (Firebase Hosting, GitHub Pages, " +
+      "or run a local server) and open it via an http:// or https:// address."
+    );
+  }
+}, 10000);
+
+function hideAllTopScreens(){
+  ['screen-auth','screen-paywall','screen-home','screen-insights','screen-history'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.classList.remove('active');
+  });
+}
+function enterAuthScreen(){
+  hideAllTopScreens();
+  document.getElementById('screen-auth').classList.add('active');
+  document.getElementById('bottom-nav').style.display='none';
+}
+function enterPaywallScreen(){
+  hideAllTopScreens();
+  document.getElementById('screen-paywall').classList.add('active');
+  document.getElementById('bottom-nav').style.display='none';
+}
+function enterMainApp(){
+  document.getElementById('bottom-nav').style.display='flex';
+  // Remember which tab (if any) was already showing before we touch
+  // anything, so a routine background sync (e.g. Firestore echoing back
+  // after a save/delete, or a reconnect after being offline) doesn't yank
+  // the user back to Home.
+  const currentTab = TABS.find(t=>document.getElementById('screen-'+t).classList.contains('active'));
+  // Always clear EVERY top-level screen first (auth, paywall, and all
+  // tabs) rather than only removing 'active' from auth/paywall. Going
+  // offline→online can fire more than one Firestore snapshot in quick
+  // succession (a stale cached read followed by the real server read), and
+  // if those calls interleave, auth/paywall and a tab screen could each end
+  // up 'active' at the same time — since screens are plain stacked <div>s,
+  // that shows as the paywall/QR content sitting on top and the home
+  // screen underneath it, instead of a clean switch to Home. Fully
+  // resetting here every time guarantees exactly one screen is ever active
+  // afterwards, no matter what state things were left in.
+  hideAllTopScreens();
+  if(!appInitialized){
+    // First time entering after login/signup: land on Home.
+    switchTab('home');
+    initAppUI();
+    appInitialized = true;
+  } else {
+    // Restore whatever tab the user was already on, falling back to Home
+    // if none was active (e.g. we just recovered from the paywall).
+    switchTab(currentTab || 'home');
+  }
+}
+function initAppUI(){
+  migrateLegacyCurrency();
+  updateCurrencyPill();
+  renderHome();
+  refreshInsights();
+  refreshRates();
+  setInterval(updateGreeting, 60000);
+}
+
+// Entries created before per-transaction currency tracking existed have no
+// `currency` field. Tag them with the currently active currency (rather than
+// defaulting to USD) so existing data isn't suddenly re-scaled the first
+// time this update runs.
+function migrateLegacyCurrency(){
+  let changed = false;
+  S.txns.forEach(t=>{ if(!t.currency){ t.currency=S.currency; changed=true; } });
+  S.budgets.forEach(b=>{ if(!b.currency){ b.currency=S.currency; changed=true; } });
+  if(changed) save();
+}
+
+// Reconciles local (localStorage) finance data with the account's Firestore
+// document. Two cases:
+//  1. The Firestore doc already has txns/budgets/currency saved (this
+//     account has synced before, from this device or another one) — that
+//     cloud copy is the source of truth, so load it into S and re-render.
+//  2. The Firestore doc has no finance fields yet (existing account,
+//     first login after this update) — push whatever is currently in
+//     local storage up to the cloud, so it becomes the seed that every
+//     other device will pick up.
+function applyCloudFinanceData(data){
+  const hasCloudData = Array.isArray(data.txns) || Array.isArray(data.budgets) || !!data.currency;
+  if(hasCloudData){
+    S.txns = Array.isArray(data.txns) ? data.txns : [];
+    S.budgets = Array.isArray(data.budgets) ? data.budgets : [];
+    if(data.currency) S.currency = data.currency;
+    S.customExpCats = Array.isArray(data.customExpCats) ? data.customExpCats : S.customExpCats;
+    S.customIncCats = Array.isArray(data.customIncCats) ? data.customIncCats : S.customIncCats;
+    localStorage.setItem('pt_txns', JSON.stringify(S.txns));
+    localStorage.setItem('pt_bud', JSON.stringify(S.budgets));
+    localStorage.setItem('pt_currency', S.currency);
+    localStorage.setItem('pt_custom_exp_cats', JSON.stringify(S.customExpCats));
+    localStorage.setItem('pt_custom_inc_cats', JSON.stringify(S.customIncCats));
+    if(appInitialized){
+      updateCurrencyPill(); renderHome(); refreshInsights();
+    }
+  } else if(!data.__fromCache && window.fbSaveFinanceData){
+    // Only seed the cloud with whatever's in local state when we have a
+    // confirmed, authoritative (non-cached) server answer that the cloud
+    // genuinely has no finance data yet — i.e. this is truly a brand new
+    // account's first sync. If this reading came from Firestore's local
+    // cache instead (e.g. right after a fresh install/reinstall or
+    // Chrome's "Clear data", where the device's cache is empty even
+    // though the account has real data on the server), we don't yet know
+    // whether the cloud is really empty — writing here would overwrite
+    // real cloud data with an empty/default local state and permanently
+    // delete it. Wait for the authoritative server read instead.
+    window.fbSaveFinanceData({ txns:S.txns, budgets:S.budgets, currency:S.currency })
+      .catch(e=>console.log('Initial cloud seed failed (will retry on next change):', e));
+  }
+}
+
+function editAccountName(){
+  document.getElementById('account-name-view').style.display='none';
+  document.getElementById('account-name-edit').style.display='block';
+  const cur = document.getElementById('account-name').textContent;
+  const input = document.getElementById('account-name-input');
+  input.value = (cur==='Set your name') ? '' : cur;
+  input.focus();
+}
+function cancelEditAccountName(){
+  document.getElementById('account-name-edit').style.display='none';
+  document.getElementById('account-name-view').style.display='flex';
+}
+async function saveAccountName(){
+  const val = document.getElementById('account-name-input').value.trim();
+  if(!val) return;
+  document.getElementById('account-name').textContent = val;
+  cancelEditAccountName();
+  showToast('✅ Name updated');
+  if(window.fbSaveFinanceData){
+    try{ await window.fbSaveFinanceData({ name: val }); }
+    catch(e){ console.log('Name save failed (will retry on next change):', e); }
+  }
+}
+
+// Remembers the last confirmed-valid subscription so that, if the device
+// goes offline before Firestore's own cache has this document (e.g. right
+// after a fresh install, or before the first online session completes),
+// the user isn't wrongly bounced to the paywall. This is deliberately
+// separate from Firestore's internal offline cache — it's ours to control.
+function cacheSubscriptionStatus(expiryDate){
+  try{
+    localStorage.setItem('pt_sub_cache', JSON.stringify({ subscribed:true, expiryDate: new Date(expiryDate).toISOString() }));
+  }catch(e){}
+}
+function getCachedSubscriptionActive(){
+  try{
+    const raw = localStorage.getItem('pt_sub_cache');
+    if(!raw) return null;
+    const c = JSON.parse(raw);
+    return (c.subscribed && c.expiryDate && new Date(c.expiryDate) > new Date()) ? c.expiryDate : null;
+  }catch(e){ return null; }
+}
+
+// Firestore's listener only fires when the document changes — it has no
+// idea when a stored expiryDate is simply going to pass with the clock, so
+// nothing tells the app "the subscription just ran out" at that moment.
+// This keeps our own timer running whenever a subscription is active, so
+// expiry is caught live and the paywall shows up on time, without needing
+// any new write from the server or a manual app restart.
+function scheduleExpiryWatch(expiryDate){
+  if(expiryWatchTimer){ clearTimeout(expiryWatchTimer); expiryWatchTimer = null; }
+  if(!expiryDate) return;
+  const msLeft = new Date(expiryDate).getTime() - Date.now();
+  if(msLeft <= 0) return;
+  // Re-check at most every 6 minutes even for long subscriptions, since
+  // browsers/mobile OSes throttle timers heavily once a tab/app is
+  // backgrounded — a single very long setTimeout could arrive minutes late.
+  // Checking this often means expiry is still caught within a few minutes
+  // even if the exact-moment timer got delayed while backgrounded.
+  const step = Math.min(msLeft, 6*60*1000);
+  expiryWatchTimer = setTimeout(function(){
+    if(lastUserData) window.onUserDataChange(lastUserData);
+  }, step);
+}
+
+// A backgrounded/minimized tab or app can have its timers paused or slowed
+// down by the browser/OS, so the exact-moment check above isn't fully
+// reliable on its own. Re-checking the instant the app becomes visible
+// again closes that gap immediately, instead of waiting for the next
+// 6-minute tick or an unrelated Firestore update.
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible' && lastUserData){
+    window.onUserDataChange(lastUserData);
+  }
+});
+
+window.onUserDataChange = function(data){
+  bootResolved = true;
+  lastUserData = data;
+  document.getElementById('screen-boot').style.display='none';
+  document.getElementById('app').style.display='flex';
+  if(window.currentUser){
+    document.getElementById('account-email').textContent = window.currentUser.email || '-';
+  }
+  const nameEl = document.getElementById('account-name');
+  if(nameEl && document.getElementById('account-name-edit').style.display!=='block'){
+    nameEl.textContent = data.name ? data.name : 'Set your name';
+  }
+  applyCloudFinanceData(data);
+  const now = new Date();
+  let active = !!(data.subscribed && data.expiryDate && new Date(data.expiryDate) > now);
+  let displayExpiry = active ? data.expiryDate : null;
+
+  if(active){
+    cacheSubscriptionStatus(data.expiryDate);
+  } else if(data.__fromCache){
+    // This reading came from Firestore's local on-device cache, not a
+    // confirmed server response (e.g. we're offline, or the fresh server
+    // answer just hasn't arrived yet). We can't fully trust "not
+    // subscribed" here, so fall back to the last confirmed-valid
+    // subscription stored on this device. That fallback is itself checked
+    // against its own expiry date, so it can never grant access past when
+    // the subscription actually expired — it only bridges the gap until a
+    // fresh, authoritative server answer arrives.
+    const cachedExpiry = getCachedSubscriptionActive();
+    if(cachedExpiry){ active = true; displayExpiry = cachedExpiry; }
+  }
+  // else: this is a confirmed answer straight from the server (not from
+  // cache) saying the subscription is not active — always trust that
+  // immediately, even if a stale local fallback would otherwise say
+  // "active". This is what makes turning a subscription on/off from the
+  // Firebase console take effect live, right away, instead of only after
+  // the app is closed and reopened.
+
+  // Firestore only pushes a new snapshot when the DOCUMENT itself changes.
+  // Nothing writes to the document at the exact moment expiryDate passes,
+  // so without this, the app would keep showing "active" right through the
+  // expiry moment and only notice next time some unrelated change happens
+  // to arrive (or the app is closed and reopened). This keeps our own
+  // clock-based watch running so expiry is caught live, on time, on its own.
+  if(active){
+    scheduleExpiryWatch(displayExpiry);
+  } else if(expiryWatchTimer){
+    clearTimeout(expiryWatchTimer);
+    expiryWatchTimer = null;
+  }
+
+  if(active){
+    document.getElementById('account-sub-status').textContent =
+      'Subscription active until ' + new Date(displayExpiry).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    enterMainApp();
+  } else {
+    if(data.pendingRequest){
+      document.getElementById('pay-form-block').style.display='none';
+      document.getElementById('pay-pending-block').style.display='block';
+      document.getElementById('pay-pending-trxid').textContent = data.lastTrxId || '-';
+    } else {
+      document.getElementById('pay-form-block').style.display='block';
+      document.getElementById('pay-pending-block').style.display='none';
+    }
+    document.getElementById('account-sub-status').textContent = 'No active subscription';
+    enterPaywallScreen();
+  }
+};
+
+window.onAuthLoggedOut = function(){
+  bootResolved = true;
+  document.getElementById('screen-boot').style.display='none';
+  document.getElementById('app').style.display='flex';
+  appInitialized = false;
+  authMode = 'login';
+  document.getElementById('auth-form').reset();
+  // Clear this device's local finance cache so that, if a different
+  // account logs in next on this same browser, applyCloudFinanceData()
+  // doesn't mistake the previous account's leftover data for "current
+  // local data" and push it into the new account.
+  S.txns = []; S.budgets = []; S.currency = 'USD'; S.rates = null; S.ratesDate = '';
+  S.customExpCats = []; S.customIncCats = [];
+  localStorage.removeItem('pt_txns');
+  localStorage.removeItem('pt_bud');
+  localStorage.removeItem('pt_currency');
+  localStorage.removeItem('pt_rates');
+  localStorage.removeItem('pt_rates_date');
+  localStorage.removeItem('pt_custom_exp_cats');
+  localStorage.removeItem('pt_custom_inc_cats');
+  enterAuthScreen();
+};
+
+function toggleAuthMode(){
+  authMode = authMode==='login' ? 'signup' : 'login';
+  document.getElementById('auth-error').classList.remove('show');
+  document.getElementById('forgot-password-link').style.display = authMode==='login' ? 'block' : 'none';
+  if(authMode==='signup'){
+    document.getElementById('auth-title').textContent='Create account';
+    document.getElementById('auth-sub').textContent='Sign up to get started with Moneyfinz';
+    document.getElementById('auth-submit-btn').textContent='Sign Up';
+    document.getElementById('auth-switch').innerHTML='Already have an account? <a onclick="toggleAuthMode()">Log in</a>';
+  } else {
+    document.getElementById('auth-title').textContent='Welcome back';
+    document.getElementById('auth-sub').textContent='Log in to continue to Moneyfinz';
+    document.getElementById('auth-submit-btn').textContent='Log In';
+    document.getElementById('auth-switch').innerHTML="Don't have an account? <a onclick=\"toggleAuthMode()\">Sign up</a>";
+  }
+}
+
+function friendlyAuthError(err){
+  const code = (err && err.code) || '';
+  if(code.includes('email-already-in-use')) return 'This email is already registered. Try logging in instead.';
+  if(code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return 'Incorrect email or password.';
+  if(code.includes('weak-password')) return 'Password should be at least 6 characters.';
+  if(code.includes('invalid-email')) return 'Please enter a valid email address.';
+  if(code.includes('network-request-failed')) return 'Network error. Please check your connection.';
+  return 'Something went wrong. Please try again.';
+}
+
+function openForgotPassword(){
+  const errEl = document.getElementById('forgot-password-error');
+  errEl.classList.remove('show');
+  document.getElementById('forgot-password-form-block').style.display = 'block';
+  document.getElementById('forgot-password-success-block').style.display = 'none';
+  // Pre-fill with whatever the user already typed on the login screen.
+  const loginEmail = document.getElementById('auth-email').value.trim();
+  document.getElementById('forgot-password-email').value = loginEmail;
+  document.getElementById('forgot-password-modal').classList.add('open');
+}
+
+function closeForgotPassword(){
+  document.getElementById('forgot-password-modal').classList.remove('open');
+}
+
+function closeForgotPasswordBg(e){
+  if(e.target === document.getElementById('forgot-password-modal')) closeForgotPassword();
+}
+
+async function handleForgotPasswordSubmit(){
+  const emailEl = document.getElementById('forgot-password-email');
+  const email = emailEl.value.trim();
+  const errEl = document.getElementById('forgot-password-error');
+  errEl.classList.remove('show');
+  if(!email){
+    errEl.textContent = 'Please enter your email address.';
+    errEl.classList.add('show');
+    return;
+  }
+  const btn = document.getElementById('forgot-password-submit-btn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try{
+    await window.fbSendPasswordReset(email);
+    document.getElementById('forgot-password-sent-email').textContent = email;
+    document.getElementById('forgot-password-form-block').style.display = 'none';
+    document.getElementById('forgot-password-success-block').style.display = 'block';
+  } catch(err){
+    // Firebase reports "user-not-found" for emails that aren't registered.
+    // We show the same success screen for that case too, so this form
+    // can't be used to check which emails have an account (a common
+    // privacy/security best practice for "forgot password" flows).
+    const code = (err && err.code) || '';
+    if(code.includes('user-not-found')){
+      document.getElementById('forgot-password-sent-email').textContent = email;
+      document.getElementById('forgot-password-form-block').style.display = 'none';
+      document.getElementById('forgot-password-success-block').style.display = 'block';
+    } else {
+      errEl.textContent = friendlyAuthError(err);
+      errEl.classList.add('show');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function handleAuthSubmit(e){
+  e.preventDefault();
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.classList.remove('show');
+  const btn = document.getElementById('auth-submit-btn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = authMode==='login' ? 'Logging in…' : 'Creating account…';
+  try{
+    if(authMode==='login') await window.fbSignIn(email, password);
+    else await window.fbSignUp(email, password);
+  } catch(err){
+    errEl.textContent = friendlyAuthError(err);
+    errEl.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+let payMethod = 'mfs';
+function setPaymentMethod(method){
+  payMethod = method;
+  document.getElementById('pay-method-mfs-btn').classList.toggle('active', method==='mfs');
+  document.getElementById('pay-method-bank-btn').classList.toggle('active', method==='bank');
+  document.getElementById('pay-method-mfs').style.display = method==='mfs' ? '' : 'none';
+  document.getElementById('pay-method-bank').style.display = method==='bank' ? '' : 'none';
+  document.getElementById('pay-error').classList.remove('show');
+}
+
+async function submitPaymentRequest(){
+  const errEl = document.getElementById('pay-error');
+  errEl.classList.remove('show');
+  let trxId = '';
+  if(payMethod === 'mfs'){
+    const phone = document.getElementById('pay-mfs-phone').value.trim();
+    if(!phone){
+      errEl.textContent = 'Please enter the phone number.';
+      errEl.classList.add('show');
+      return;
+    }
+    trxId = `MFS: ${phone}`;
+  } else {
+    const acc = document.getElementById('pay-bank-account').value.trim();
+    const card = document.getElementById('pay-bank-card').value.trim();
+    if(!acc || !card){
+      errEl.textContent = 'Please enter both last-4-digit numbers.';
+      errEl.classList.add('show');
+      return;
+    }
+    trxId = `Bank: acct ${acc} / card ${card}`;
+  }
+  const btn = document.getElementById('pay-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  try{
+    await window.fbSubmitPayment(trxId);
+    showToast('✓ Submitted — awaiting approval');
+  } catch(err){
+    console.error('Payment submit error:', err);
+    errEl.textContent = (err && err.message) ? err.message : 'Could not submit. Please check your connection and try again.';
+    errEl.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit for Approval';
+  }
+}
+
+function openAccountMenu(){ document.getElementById('account-modal').classList.add('open'); }
+function closeAccountMenu(){ document.getElementById('account-modal').classList.remove('open'); }
+function closeAccountMenuBg(e){ if(e.target===document.getElementById('account-modal')) closeAccountMenu(); }
+
+async function handleLogout(){
+  closeAccountMenu();
+  await window.fbLogout();
+}
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(err => console.log('SW registration failed:', err));
+  });
+}
+
+// The payment QR image is loaded from a plain file (payment-qr.png) sitting
+// next to index.html on the server — same as icon.svg or manifest.json.
+// To change the QR code, just upload a new payment-qr.png to replace the old
+// one; no code edit needed. We add today's date as a query string so
+// browsers pick up the new file instead of showing a cached old one from
+// earlier the same day/previous days.
+(function(){
+  const qrImg = document.getElementById('pay-qr-img');
+  if(qrImg){
+    const today = new Date().toISOString().slice(0,10);
+    qrImg.src = 'payment-qr.png?v=' + today;
+  }
+})();
+
+// ── ALL APP LOGOS / ICONS: SAME "JUST REPLACE THE FILE" PATTERN ──
+// Every logo/icon below is loaded from a plain file sitting next to
+// index.html on the server. To change any of them, upload a new file
+// with the SAME name to overwrite the old one — no code edit needed:
+//
+//   icon.svg      → browser tab favicon + "Add to Home Screen" icon (iOS)
+//                   SVG only — this one must stay .svg.
+//   app-logo.png  → logo shown on the Login / Sign up screen
+//                   Upload app-logo.svg OR app-logo.png — the code tries
+//                   the .svg first and falls back to .png automatically.
+//   manifest.json → PWA install icons (icon-192.png / icon-512.png /
+//                   icon-512-maskable.png, listed inside manifest.json).
+//                   Keep these as PNG — SVG isn't reliably supported for
+//                   home-screen/maskable icons on iOS Safari and older
+//                   Android, so PNG is the safe format here.
+//
+// We add today's date as a cache-busting query string so the browser
+// always fetches the newest uploaded file instead of an old cached one.
+(function(){
+  const v = new Date().toISOString().slice(0,10);
+
+  const favicon = document.getElementById('favicon-link');
+  if(favicon) favicon.href = 'icon.svg?v=' + v;
+
+  const appleIcon = document.getElementById('apple-touch-icon-link');
+  if(appleIcon) appleIcon.href = 'icon.svg?v=' + v;
+
+  const authLogo = document.getElementById('auth-logo-img');
+  if(authLogo) authLogo.src = 'app-logo.svg?v=' + v;
+})();
+
+</script>
+</body>
+</html>
