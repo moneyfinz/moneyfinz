@@ -1365,37 +1365,14 @@ let financeSyncTimer = null;
 function syncFinanceToCloud(){
   if(financeSyncTimer) clearTimeout(financeSyncTimer);
   financeSyncTimer = setTimeout(()=>{
-    financeSyncTimer = null;
-    flushFinanceSyncNow();
+    if(window.fbSaveFinanceData){
+      window.fbSaveFinanceData({
+        txns:S.txns, budgets:S.budgets, currency:S.currency,
+        customExpCats:S.customExpCats, customIncCats:S.customIncCats
+      }).catch(e=>console.log('Cloud sync failed (will retry on next change):', e));
+    }
   }, 600);
 }
-function flushFinanceSyncNow(){
-  if(financeSyncTimer){ clearTimeout(financeSyncTimer); financeSyncTimer = null; }
-  if(window.fbSaveFinanceData){
-    window.fbSaveFinanceData({
-      txns:S.txns, budgets:S.budgets, currency:S.currency,
-      customExpCats:S.customExpCats, customIncCats:S.customIncCats
-    }).catch(e=>console.log('Cloud sync failed (will retry on next change):', e));
-  }
-}
-// A user very often adds an entry and then immediately switches away from
-// the app or closes it — on a phone that can happen well within the 600ms
-// debounce above, which means that entry would otherwise never actually
-// reach Firestore (it would only ever have existed in localStorage on that
-// one device). If this device's local storage is later cleared, that entry
-// is then permanently gone, even though it looked saved at the time. Firing
-// an immediate, non-debounced sync the moment the tab/app is hidden or
-// about to close guarantees any pending change is sent before that happens.
-document.addEventListener('visibilitychange', function(){
-  if(document.visibilityState === 'hidden' && financeSyncTimer){
-    flushFinanceSyncNow();
-  }
-});
-window.addEventListener('pagehide', function(){
-  if(financeSyncTimer){
-    flushFinanceSyncNow();
-  }
-});
 function save(){
   localStorage.setItem('pt_txns', JSON.stringify(S.txns));
   localStorage.setItem('pt_bud',  JSON.stringify(S.budgets));
@@ -2579,7 +2556,18 @@ document.addEventListener('visibilitychange', function(){
 });
 
 window.onUserDataChange = function(data){
+  bootResolved = true;
   lastUserData = data;
+  document.getElementById('screen-boot').style.display='none';
+  document.getElementById('app').style.display='flex';
+  if(window.currentUser){
+    document.getElementById('account-email').textContent = window.currentUser.email || '-';
+  }
+  const nameEl = document.getElementById('account-name');
+  if(nameEl && document.getElementById('account-name-edit').style.display!=='block'){
+    nameEl.textContent = data.name ? data.name : 'Set your name';
+  }
+  applyCloudFinanceData(data);
   const now = new Date();
   let active = !!(data.subscribed && data.expiryDate && new Date(data.expiryDate) > now);
   let displayExpiry = active ? data.expiryDate : null;
@@ -2596,23 +2584,7 @@ window.onUserDataChange = function(data){
     // the subscription actually expired — it only bridges the gap until a
     // fresh, authoritative server answer arrives.
     const cachedExpiry = getCachedSubscriptionActive();
-    if(cachedExpiry){
-      active = true; displayExpiry = cachedExpiry;
-    } else if(!bootResolved){
-      // No confirmed answer has arrived yet for this boot AND there's no
-      // cached subscription fallback either — this happens right after
-      // Chrome's "Clear browsing data", which wipes localStorage and
-      // Firestore's local cache together, so this very first snapshot is
-      // just an empty "don't know yet" placeholder, not real proof the
-      // subscription is inactive. The authoritative, cache-bypassing read
-      // (getDocFromServer) is already in flight in parallel and will call
-      // this function again with the real answer in a moment. Keep
-      // showing the boot loading screen and wait for it, instead of
-      // flashing the payment screen — that flash is what let people
-      // submit a needless payment (and then see their data appear to
-      // vanish) while their real subscription was simply still loading.
-      return;
-    }
+    if(cachedExpiry){ active = true; displayExpiry = cachedExpiry; }
   }
   // else: this is a confirmed answer straight from the server (not from
   // cache) saying the subscription is not active — always trust that
@@ -2620,20 +2592,6 @@ window.onUserDataChange = function(data){
   // "active". This is what makes turning a subscription on/off from the
   // Firebase console take effect live, right away, instead of only after
   // the app is closed and reopened.
-
-  // We now have a confirmed-enough answer to actually decide what to show
-  // (either a genuine server-confirmed status, or a valid cached fallback).
-  bootResolved = true;
-  document.getElementById('screen-boot').style.display='none';
-  document.getElementById('app').style.display='flex';
-  if(window.currentUser){
-    document.getElementById('account-email').textContent = window.currentUser.email || '-';
-  }
-  const nameEl = document.getElementById('account-name');
-  if(nameEl && document.getElementById('account-name-edit').style.display!=='block'){
-    nameEl.textContent = data.name ? data.name : 'Set your name';
-  }
-  applyCloudFinanceData(data);
 
   // Firestore only pushes a new snapshot when the DOCUMENT itself changes.
   // Nothing writes to the document at the exact moment expiryDate passes,
