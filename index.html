@@ -581,6 +581,7 @@ html,body{height:100%;overflow:hidden;background:#fff;
             const data = snap.data();
             if (data.expiryDate && data.expiryDate.toDate) data.expiryDate = data.expiryDate.toDate();
             data.__fromCache = false;
+            window.clearAmbiguousSubTimeout && window.clearAmbiguousSubTimeout();
             window.onUserDataChange && window.onUserDataChange(data);
           }
         }).catch((e) => {
@@ -604,9 +605,31 @@ html,body{height:100%;overflow:hidden;background:#fff;
               // here — doing so on a false reading is what used to wipe a
               // real account's transactions and subscription status the
               // moment someone reinstalled the app.
-              window.onUserDataChange && window.onUserDataChange({ __fromCache: true, __noDocYet: true });
+              //
+              // If our own local fallback cache has a still-valid
+              // subscription, use it right away so the user lands on Home
+              // instead of the paywall while we wait for the real answer.
+              // But if THAT is also empty (e.g. Chrome's "Clear site data"
+              // wipes localStorage too, not just Firestore's cache), we
+              // genuinely have no idea yet whether this account is
+              // subscribed — showing the paywall here would be a guess, and
+              // a wrong one for any real subscriber. So instead we leave the
+              // boot screen up and let scheduleAmbiguousSubTimeout() below
+              // resolve it — either the authoritative getDocFromServer
+              // read (or this listener's own server sync) will arrive
+              // within a couple seconds and settle it correctly, or, only
+              // if nothing authoritative shows up at all (e.g. truly
+              // offline with no prior local record), it times out to the
+              // paywall after a few seconds instead of spinning forever.
+              const cachedExpiry = window.getCachedSubscriptionActive && window.getCachedSubscriptionActive();
+              if (cachedExpiry) {
+                window.onUserDataChange && window.onUserDataChange({ __fromCache: true, subscribed: true, expiryDate: cachedExpiry });
+              } else {
+                window.scheduleAmbiguousSubTimeout && window.scheduleAmbiguousSubTimeout();
+              }
               return;
             }
+            window.clearAmbiguousSubTimeout && window.clearAmbiguousSubTimeout();
             // This is a confirmed answer straight from the server: the
             // document genuinely does not exist (e.g. signup happened
             // before Firestore rules were set up). Recreate it with safe
@@ -628,6 +651,7 @@ html,body{height:100%;overflow:hidden;background:#fff;
             }
             return;
           }
+          window.clearAmbiguousSubTimeout && window.clearAmbiguousSubTimeout();
           const data = snap.data();
           if (data.expiryDate && data.expiryDate.toDate) data.expiryDate = data.expiryDate.toDate();
           // Tell the app whether this reading came straight from the server
@@ -2346,13 +2370,6 @@ let bootResolved = false;
 // see scheduleExpiryWatch() below.
 let lastUserData = null;
 let expiryWatchTimer = null;
-// Safety-net timer: if we truly have zero info yet (fresh login right
-// after Chrome's "Clear cookies/site data" wiped both the local Firestore
-// cache AND our own pt_sub_cache fallback), show the loading screen for at
-// most 5 seconds while waiting for the real server answer. If nothing
-// arrives in that window (e.g. genuinely no internet), fall through to
-// normal handling instead of leaving the spinner up forever.
-let noDocYetTimer = null;
 
 function showBootError(msg){
   bootResolved = true;
@@ -2528,6 +2545,33 @@ function getCachedSubscriptionActive(){
     return (c.subscribed && c.expiryDate && new Date(c.expiryDate) > new Date()) ? c.expiryDate : null;
   }catch(e){ return null; }
 }
+// Exposed so the Firebase module script (a separate <script type="module">
+// block) can call these without needing a shared JS scope.
+window.getCachedSubscriptionActive = getCachedSubscriptionActive;
+
+// Right after login on a device with an empty Firestore cache AND an empty
+// local fallback cache (e.g. right after Chrome's "Clear site data"), we
+// don't yet know whether the account is subscribed. Rather than guessing
+// "not subscribed" and flashing the paywall at a real subscriber, we keep
+// the boot screen up (see onUserDataChange/showBootError — neither is
+// called, so screen-boot just stays visible) and give the authoritative
+// answer (getDocFromServer, or this listener's own server sync) a few
+// seconds to arrive. Only if nothing authoritative shows up in that window
+// do we fall back to showing the paywall, so the user isn't stuck staring
+// at a spinner forever if they're genuinely offline with no prior record.
+let ambiguousSubTimer = null;
+function scheduleAmbiguousSubTimeout(){
+  if(ambiguousSubTimer || bootResolved) return;
+  ambiguousSubTimer = setTimeout(function(){
+    ambiguousSubTimer = null;
+    window.onUserDataChange({ __fromCache: false, subscribed: false, expiryDate: null });
+  }, 8000);
+}
+function clearAmbiguousSubTimeout(){
+  if(ambiguousSubTimer){ clearTimeout(ambiguousSubTimer); ambiguousSubTimer = null; }
+}
+window.scheduleAmbiguousSubTimeout = scheduleAmbiguousSubTimeout;
+window.clearAmbiguousSubTimeout = clearAmbiguousSubTimeout;
 
 // Firestore's listener only fires when the document changes — it has no
 // idea when a stored expiryDate is simply going to pass with the clock, so
@@ -2565,7 +2609,16 @@ document.addEventListener('visibilitychange', function(){
 window.onUserDataChange = function(data){
   bootResolved = true;
   lastUserData = data;
-
+  document.getElementById('screen-boot').style.display='none';
+  document.getElementById('app').style.display='flex';
+  if(window.currentUser){
+    document.getElementById('account-email').textContent = window.currentUser.email || '-';
+  }
+  const nameEl = document.getElementById('account-name');
+  if(nameEl && document.getElementById('account-name-edit').style.display!=='block'){
+    nameEl.textContent = data.name ? data.name : 'Set your name';
+  }
+  applyCloudFinanceData(data);
   const now = new Date();
   let active = !!(data.subscribed && data.expiryDate && new Date(data.expiryDate) > now);
   let displayExpiry = active ? data.expiryDate : null;
@@ -2582,48 +2635,8 @@ window.onUserDataChange = function(data){
     // the subscription actually expired — it only bridges the gap until a
     // fresh, authoritative server answer arrives.
     const cachedExpiry = getCachedSubscriptionActive();
-    if(cachedExpiry){
-      active = true; displayExpiry = cachedExpiry;
-    } else if(data.__noDocYet && !data.__timedOut){
-      // We have ZERO information yet — no cached doc on this device AND
-      // no pt_sub_cache fallback either (both get wiped together by
-      // Chrome's "Clear cookies/site data"). This is NOT a confirmed
-      // "not subscribed" answer, it's only "haven't heard back yet".
-      // Keep the loading screen up for at most 5 seconds while waiting
-      // for the real answer (the getDocFromServer call already in
-      // flight, or the live listener's first real snapshot) — on a
-      // working connection this normally resolves in well under a
-      // second, so the 5s cap is only ever felt in a genuine no-internet
-      // situation.
-      if(!noDocYetTimer){
-        noDocYetTimer = setTimeout(function(){
-          noDocYetTimer = null;
-          if(lastUserData && lastUserData.__noDocYet){
-            window.onUserDataChange(Object.assign({}, lastUserData, { __timedOut: true }));
-          }
-        }, 5000);
-      }
-      return;
-    }
+    if(cachedExpiry){ active = true; displayExpiry = cachedExpiry; }
   }
-  if(noDocYetTimer){ clearTimeout(noDocYetTimer); noDocYetTimer = null; }
-
-  document.getElementById('screen-boot').style.display='none';
-  document.getElementById('app').style.display='flex';
-  if(window.currentUser){
-    document.getElementById('account-email').textContent = window.currentUser.email || '-';
-  }
-  const nameEl = document.getElementById('account-name');
-  if(nameEl && document.getElementById('account-name-edit').style.display!=='block'){
-    nameEl.textContent = data.name ? data.name : 'Set your name';
-  }
-  applyCloudFinanceData(data);
-  // else: this is a confirmed answer straight from the server (not from
-  // cache) saying the subscription is not active — always trust that
-  // immediately, even if a stale local fallback would otherwise say
-  // "active". This is what makes turning a subscription on/off from the
-  // Firebase console take effect live, right away, instead of only after
-  // the app is closed and reopened.
   // else: this is a confirmed answer straight from the server (not from
   // cache) saying the subscription is not active — always trust that
   // immediately, even if a stale local fallback would otherwise say
@@ -2663,6 +2676,7 @@ window.onUserDataChange = function(data){
 };
 
 window.onAuthLoggedOut = function(){
+  clearAmbiguousSubTimeout();
   bootResolved = true;
   document.getElementById('screen-boot').style.display='none';
   document.getElementById('app').style.display='flex';
