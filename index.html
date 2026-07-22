@@ -636,6 +636,21 @@ html,body{height:100%;overflow:hidden;background:#fff;
           // (possibly stale — safe to fall back to our own last-known-good
           // subscription record while we wait for the real server answer).
           data.__fromCache = snap.metadata.fromCache;
+          // A snapshot can also carry an unacknowledged LOCAL write (e.g. the
+          // pendingRequest/lastTrxId write from submitting a payment) before
+          // the server has confirmed it. When the base document wasn't
+          // cached on this device yet (fresh install, or right after
+          // Chrome's "Clear data"), Firestore's local echo of that write
+          // contains ONLY the fields just written — not the rest of the
+          // real document — even though fromCache reports false here. Mark
+          // this so downstream code treats it the same as a cache read
+          // (i.e. "don't fully trust this, wait for the real server
+          // answer") instead of as confirmed truth. Without this, that
+          // partial echo used to be read as "the cloud genuinely has no
+          // subscription/transactions", which then triggered the app to
+          // seed the cloud with empty local data — permanently wiping the
+          // real account data.
+          data.__pending = snap.metadata.hasPendingWrites;
           window.onUserDataChange && window.onUserDataChange(data);
         }, (err) => {
           console.error('Firestore listen error:', err);
@@ -2463,17 +2478,21 @@ function applyCloudFinanceData(data){
     if(appInitialized){
       updateCurrencyPill(); renderHome(); refreshInsights();
     }
-  } else if(!data.__fromCache && window.fbSaveFinanceData){
+  } else if(!data.__fromCache && !data.__pending && window.fbSaveFinanceData){
     // Only seed the cloud with whatever's in local state when we have a
-    // confirmed, authoritative (non-cached) server answer that the cloud
-    // genuinely has no finance data yet — i.e. this is truly a brand new
-    // account's first sync. If this reading came from Firestore's local
-    // cache instead (e.g. right after a fresh install/reinstall or
+    // confirmed, authoritative (non-cached, non-pending) server answer that
+    // the cloud genuinely has no finance data yet — i.e. this is truly a
+    // brand new account's first sync. If this reading came from Firestore's
+    // local cache instead (e.g. right after a fresh install/reinstall or
     // Chrome's "Clear data", where the device's cache is empty even
     // though the account has real data on the server), we don't yet know
     // whether the cloud is really empty — writing here would overwrite
     // real cloud data with an empty/default local state and permanently
-    // delete it. Wait for the authoritative server read instead.
+    // delete it. Wait for the authoritative server read instead. The same
+    // danger applies to an unacknowledged LOCAL write (data.__pending) made
+    // while the base document wasn't cached yet — e.g. submitting a payment
+    // request right after "Clear data" — since its local echo only contains
+    // the fields that write touched, not the real document.
     window.fbSaveFinanceData({ txns:S.txns, budgets:S.budgets, currency:S.currency })
       .catch(e=>console.log('Initial cloud seed failed (will retry on next change):', e));
   }
@@ -2574,10 +2593,13 @@ window.onUserDataChange = function(data){
 
   if(active){
     cacheSubscriptionStatus(data.expiryDate);
-  } else if(data.__fromCache){
-    // This reading came from Firestore's local on-device cache, not a
-    // confirmed server response (e.g. we're offline, or the fresh server
-    // answer just hasn't arrived yet). We can't fully trust "not
+  } else if(data.__fromCache || data.__pending){
+    // This reading came from Firestore's local on-device cache, or is an
+    // unacknowledged local write echoed back before the server confirmed
+    // it (data.__pending) — either way, not a confirmed server response
+    // (e.g. we're offline, the fresh server answer just hasn't arrived
+    // yet, or a payment request was just submitted before the account's
+    // document was cached on this device). We can't fully trust "not
     // subscribed" here, so fall back to the last confirmed-valid
     // subscription stored on this device. That fallback is itself checked
     // against its own expiry date, so it can never grant access past when
