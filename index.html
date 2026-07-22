@@ -604,7 +604,7 @@ html,body{height:100%;overflow:hidden;background:#fff;
               // here — doing so on a false reading is what used to wipe a
               // real account's transactions and subscription status the
               // moment someone reinstalled the app.
-              window.onUserDataChange && window.onUserDataChange({ __fromCache: true });
+              window.onUserDataChange && window.onUserDataChange({ __fromCache: true, __noDocYet: true });
               return;
             }
             // This is a confirmed answer straight from the server: the
@@ -2346,6 +2346,11 @@ let bootResolved = false;
 // see scheduleExpiryWatch() below.
 let lastUserData = null;
 let expiryWatchTimer = null;
+// Safety-net timer for the case where we truly have no info yet (fresh
+// login right after Chrome's "Clear cookies/site data" wiped both the
+// local Firestore cache AND our own pt_sub_cache fallback) and are waiting
+// for the first confirmed server answer. See window.onUserDataChange.
+let noDocYetTimer = null;
 
 function showBootError(msg){
   bootResolved = true;
@@ -2558,16 +2563,7 @@ document.addEventListener('visibilitychange', function(){
 window.onUserDataChange = function(data){
   bootResolved = true;
   lastUserData = data;
-  document.getElementById('screen-boot').style.display='none';
-  document.getElementById('app').style.display='flex';
-  if(window.currentUser){
-    document.getElementById('account-email').textContent = window.currentUser.email || '-';
-  }
-  const nameEl = document.getElementById('account-name');
-  if(nameEl && document.getElementById('account-name-edit').style.display!=='block'){
-    nameEl.textContent = data.name ? data.name : 'Set your name';
-  }
-  applyCloudFinanceData(data);
+
   const now = new Date();
   let active = !!(data.subscribed && data.expiryDate && new Date(data.expiryDate) > now);
   let displayExpiry = active ? data.expiryDate : null;
@@ -2584,7 +2580,30 @@ window.onUserDataChange = function(data){
     // the subscription actually expired — it only bridges the gap until a
     // fresh, authoritative server answer arrives.
     const cachedExpiry = getCachedSubscriptionActive();
-    if(cachedExpiry){ active = true; displayExpiry = cachedExpiry; }
+    if(cachedExpiry){
+      active = true; displayExpiry = cachedExpiry;
+    } else if(data.__noDocYet && !data.__timedOut){
+      // We have ZERO information yet — no cached doc on this device AND
+      // no pt_sub_cache fallback either (both get wiped together by
+      // Chrome's "Clear cookies/site data"). This is NOT a confirmed
+      // "not subscribed" answer, it's just "haven't heard back yet".
+      // Keep the loading spinner up and wait for the real answer
+      // (getDocFromServer or the next onSnapshot) instead of guessing
+      // and bouncing an active subscriber to the payment page.
+      if(!noDocYetTimer){
+        noDocYetTimer = setTimeout(function(){
+          noDocYetTimer = null;
+          // Still nothing after a reasonable wait (e.g. genuinely
+          // offline with no prior cache on this device) — stop waiting
+          // and fall through to normal handling below so the user isn't
+          // stuck on a spinner forever.
+          if(lastUserData && lastUserData.__noDocYet){
+            window.onUserDataChange(Object.assign({}, lastUserData, { __timedOut: true }));
+          }
+        }, 8000);
+      }
+      return;
+    }
   }
   // else: this is a confirmed answer straight from the server (not from
   // cache) saying the subscription is not active — always trust that
@@ -2592,6 +2611,18 @@ window.onUserDataChange = function(data){
   // "active". This is what makes turning a subscription on/off from the
   // Firebase console take effect live, right away, instead of only after
   // the app is closed and reopened.
+  if(noDocYetTimer){ clearTimeout(noDocYetTimer); noDocYetTimer = null; }
+
+  document.getElementById('screen-boot').style.display='none';
+  document.getElementById('app').style.display='flex';
+  if(window.currentUser){
+    document.getElementById('account-email').textContent = window.currentUser.email || '-';
+  }
+  const nameEl = document.getElementById('account-name');
+  if(nameEl && document.getElementById('account-name-edit').style.display!=='block'){
+    nameEl.textContent = data.name ? data.name : 'Set your name';
+  }
+  applyCloudFinanceData(data);
 
   // Firestore only pushes a new snapshot when the DOCUMENT itself changes.
   // Nothing writes to the document at the exact moment expiryDate passes,
