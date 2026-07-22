@@ -2346,10 +2346,12 @@ let bootResolved = false;
 // see scheduleExpiryWatch() below.
 let lastUserData = null;
 let expiryWatchTimer = null;
-// Safety-net timer for the case where we truly have no info yet (fresh
-// login right after Chrome's "Clear cookies/site data" wiped both the
-// local Firestore cache AND our own pt_sub_cache fallback) and are waiting
-// for the first confirmed server answer. See window.onUserDataChange.
+// Safety-net timer: if we truly have zero info yet (fresh login right
+// after Chrome's "Clear cookies/site data" wiped both the local Firestore
+// cache AND our own pt_sub_cache fallback), show the loading screen for at
+// most 5 seconds while waiting for the real server answer. If nothing
+// arrives in that window (e.g. genuinely no internet), fall through to
+// normal handling instead of leaving the spinner up forever.
 let noDocYetTimer = null;
 
 function showBootError(msg){
@@ -2586,31 +2588,24 @@ window.onUserDataChange = function(data){
       // We have ZERO information yet — no cached doc on this device AND
       // no pt_sub_cache fallback either (both get wiped together by
       // Chrome's "Clear cookies/site data"). This is NOT a confirmed
-      // "not subscribed" answer, it's just "haven't heard back yet".
-      // Keep the loading spinner up and wait for the real answer
-      // (getDocFromServer or the next onSnapshot) instead of guessing
-      // and bouncing an active subscriber to the payment page.
+      // "not subscribed" answer, it's only "haven't heard back yet".
+      // Keep the loading screen up for at most 5 seconds while waiting
+      // for the real answer (the getDocFromServer call already in
+      // flight, or the live listener's first real snapshot) — on a
+      // working connection this normally resolves in well under a
+      // second, so the 5s cap is only ever felt in a genuine no-internet
+      // situation.
       if(!noDocYetTimer){
         noDocYetTimer = setTimeout(function(){
           noDocYetTimer = null;
-          // Still nothing after a reasonable wait (e.g. genuinely
-          // offline with no prior cache on this device) — stop waiting
-          // and fall through to normal handling below so the user isn't
-          // stuck on a spinner forever.
           if(lastUserData && lastUserData.__noDocYet){
             window.onUserDataChange(Object.assign({}, lastUserData, { __timedOut: true }));
           }
-        }, 8000);
+        }, 5000);
       }
       return;
     }
   }
-  // else: this is a confirmed answer straight from the server (not from
-  // cache) saying the subscription is not active — always trust that
-  // immediately, even if a stale local fallback would otherwise say
-  // "active". This is what makes turning a subscription on/off from the
-  // Firebase console take effect live, right away, instead of only after
-  // the app is closed and reopened.
   if(noDocYetTimer){ clearTimeout(noDocYetTimer); noDocYetTimer = null; }
 
   document.getElementById('screen-boot').style.display='none';
@@ -2623,6 +2618,18 @@ window.onUserDataChange = function(data){
     nameEl.textContent = data.name ? data.name : 'Set your name';
   }
   applyCloudFinanceData(data);
+  // else: this is a confirmed answer straight from the server (not from
+  // cache) saying the subscription is not active — always trust that
+  // immediately, even if a stale local fallback would otherwise say
+  // "active". This is what makes turning a subscription on/off from the
+  // Firebase console take effect live, right away, instead of only after
+  // the app is closed and reopened.
+  // else: this is a confirmed answer straight from the server (not from
+  // cache) saying the subscription is not active — always trust that
+  // immediately, even if a stale local fallback would otherwise say
+  // "active". This is what makes turning a subscription on/off from the
+  // Firebase console take effect live, right away, instead of only after
+  // the app is closed and reopened.
 
   // Firestore only pushes a new snapshot when the DOCUMENT itself changes.
   // Nothing writes to the document at the exact moment expiryDate passes,
