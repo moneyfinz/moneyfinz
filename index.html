@@ -62,26 +62,10 @@ h1,h2,h3{font-family:var(--disp);letter-spacing:-.02em}
 .nav.scrolled .wrap{height:62px}
 .brand{display:flex;align-items:center;gap:10px}
 .brand-mark{
-  width:34px;height:34px;border-radius:10px;flex-shrink:0;
+  width:34px;height:34px;border-radius:10px;flex-shrink:0;object-fit:cover;
   background:linear-gradient(150deg,var(--blue-400),var(--blue-600));
-  position:relative;box-shadow:0 4px 14px rgba(37,99,235,.4);
+  box-shadow:0 4px 14px rgba(37,99,235,.4);
 }
-.brand-mark::before,.brand-mark::after{
-  content:'';position:absolute;border-radius:50%;background:rgba(255,255,255,.9);
-}
-.brand-mark::before{width:13px;height:13px;top:7px;left:7px}
-.brand-mark::after{width:7px;height:7px;bottom:6px;right:6px;background:rgba(255,255,255,.55)}
-.brand-mark.custom-logo{background:var(--navy-900) center/cover no-repeat;}
-.brand-mark.custom-logo::before,.brand-mark.custom-logo::after{display:none}
-.brand-mark-wrap{position:relative;display:inline-flex}
-.logo-edit-btn{
-  position:absolute;left:-7px;top:-7px;width:17px;height:17px;border-radius:50%;
-  background:var(--blue-500);color:#fff;font-size:9px;line-height:1;border:1.5px solid var(--navy-950);
-  display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;
-  transition:opacity .2s ease,transform .2s ease;padding:0;z-index:2;
-}
-.brand-mark-wrap:hover .logo-edit-btn,.logo-edit-btn:focus{opacity:1}
-.logo-edit-btn:hover{transform:scale(1.15)}
 .brand-word{font-family:var(--disp);font-weight:700;font-size:19px;color:#fff;letter-spacing:-.02em}
 .nav-links{display:flex;align-items:center;gap:36px}
 .nav-links a{font-size:14px;font-weight:500;color:rgba(255,255,255,.68);transition:color .15s}
@@ -477,14 +461,10 @@ footer{background:var(--navy-950);color:rgba(255,255,255,.55);padding:56px 0 30p
 
 <nav class="nav">
   <div class="wrap">
-    <div class="brand">
-      <span class="brand-mark-wrap">
-        <span class="brand-mark" id="navBrandMark"></span>
-        <button class="logo-edit-btn" id="logoEditBtn" type="button" title="লোগো পরিবর্তন করুন">✎</button>
-      </span>
+    <a class="brand" href="index.html">
+      <img class="brand-mark" src="logo.png" alt="Moneyfinz logo">
       <span class="brand-word">moneyfinz</span>
-    </div>
-    <input type="file" id="logoInput" accept="image/*" hidden>
+    </a>
     <div class="nav-links">
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
@@ -756,10 +736,10 @@ footer{background:var(--navy-950);color:rgba(255,255,255,.55);padding:56px 0 30p
   <div class="wrap">
     <div class="foot-top">
       <div class="foot-brand">
-        <div class="brand">
-          <span class="brand-mark"></span>
+        <a class="brand" href="index.html">
+          <img class="brand-mark" src="logo.png" alt="Moneyfinz logo">
           <span class="brand-word">moneyfinz</span>
-        </div>
+        </a>
         <p>The money app built for how you actually spend — track, budget, and understand every taka.</p>
       </div>
       <div class="foot-links">
@@ -786,33 +766,6 @@ footer{background:var(--navy-950);color:rgba(255,255,255,.55);padding:56px 0 30p
 
 <script>
 document.getElementById('year').textContent = new Date().getFullYear();
-
-// ── Custom logo (saved in this browser, applies across all pages) ──
-function applyMoneyfinzLogo(url){
-  document.querySelectorAll('.brand-mark').forEach(el=>{
-    if(url){ el.style.backgroundImage = 'url(' + url + ')'; el.classList.add('custom-logo'); }
-    else{ el.style.backgroundImage = ''; el.classList.remove('custom-logo'); }
-  });
-}
-(function(){
-  const savedLogo = localStorage.getItem('moneyfinz_logo');
-  if(savedLogo) applyMoneyfinzLogo(savedLogo);
-  const logoBtn = document.getElementById('logoEditBtn');
-  const logoInput = document.getElementById('logoInput');
-  if(logoBtn && logoInput){
-    logoBtn.addEventListener('click', (e)=>{ e.preventDefault(); logoInput.click(); });
-    logoInput.addEventListener('change', (e)=>{
-      const file = e.target.files && e.target.files[0];
-      if(!file) return;
-      const reader = new FileReader();
-      reader.onload = ()=>{
-        try{ localStorage.setItem('moneyfinz_logo', reader.result); }catch(err){}
-        applyMoneyfinzLogo(reader.result);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-})();
 
 // Ledger ticker — duplicate the sequence once so the loop is seamless
 const ledgerItems = [
