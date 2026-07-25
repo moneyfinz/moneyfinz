@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════════
 // Moneyfinz Service Worker
 //
-// GOAL: never let a stale, cached copy of index.html (or the app's
+// GOAL: never let a stale, cached copy of moneyfinz.html (or the app's
 // core JS logic) get served to a returning user. A stale copy is
 // exactly what was causing users with an ACTIVE subscription to see
 // the paywall again after clearing cookies, and — worse — losing
@@ -9,7 +9,7 @@
 // broken app code instead of the fixed version sitting on the server.
 //
 // STRATEGY:
-//  - HTML (the app shell, i.e. index.html / Admin.html): NETWORK-FIRST.
+//  - HTML (the app shell, i.e. moneyfinz.html / Admin.html): NETWORK-FIRST.
 //    Always try the network for the latest code. Only fall back to a
 //    cached copy if the device is genuinely offline. This guarantees
 //    that as soon as you deploy a fix, every user gets it on their
@@ -31,7 +31,7 @@ const CACHE_VERSION = 'moneyfinz-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 // Only truly static, rarely-changing files belong here.
-// Do NOT put index.html / Admin.html in this list — they must always
+// Do NOT put moneyfinz.html / Admin.html in this list — they must always
 // go through the network-first path above so app logic can never go
 // stale on a user's device.
 const STATIC_ASSETS = [
@@ -87,7 +87,7 @@ self.addEventListener('fetch', (event) => {
     (req.headers.get('accept') || '').includes('text/html');
 
   if (isSameOrigin && isHTMLRequest) {
-    // NETWORK-FIRST for the app shell (index.html / Admin.html).
+    // NETWORK-FIRST for the app shell (moneyfinz.html / Admin.html).
     // This is the fix: app logic is always fetched fresh when online,
     // so a code fix on the server reaches users immediately instead
     // of being masked by an old cached page.
