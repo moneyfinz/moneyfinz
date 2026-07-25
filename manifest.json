@@ -2,7 +2,7 @@
   "name": "Moneyfinz",
   "short_name": "Moneyfinz",
   "description": "Track your income, expenses, and budgets with Moneyfinz.",
-  "start_url": "./index.html",
+  "start_url": "./moneyfinz.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
