@@ -599,7 +599,7 @@ document.getElementById('contactForm').addEventListener('submit', function(e){
   const message = document.getElementById('cf-message').value;
   const subject = encodeURIComponent('Message from ' + name + ' via Moneyfinz site');
   const body = encodeURIComponent(message + '\n\n— ' + name + ' (' + email + ')');
-  window.location.href = 'mailto:support@moneyfinz.app?subject=' + subject + '&body=' + body;
+  window.location.href = 'mailto:moneyfinz.contact@gmail.com?subject=' + subject + '&body=' + body;
   document.getElementById('formThanks').style.display = 'block';
 });
 </script>
@@ -631,7 +631,7 @@ document.getElementById('contactForm').addEventListener('submit', function(e){
     </div>
     <div class="foot-bottom">
       <span>© <span id="year"></span> Moneyfinz. All rights reserved.</span>
-      <span>Made for Bangladesh, works everywhere.</span>
+      <span>Know Where Every Taka Goes.</span>
     </div>
   </div>
 </footer>
